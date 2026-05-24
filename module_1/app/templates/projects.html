@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block title %}Projects | Ryan Gogerty{% endblock %}
+
+{% block content %}
+<section class="projects-section">
+    <h1>Projects</h1>
+
+    <div class="project-card">
+        <h2>Module 1: Personal Flask Website</h2>
+        <p>
+            A personal website built using Flask, a lightweight Python web framework. The site features
+            a homepage with a biography and photo, a contact page with professional links, and a projects
+            page showcasing coursework. The application is structured using Flask Blueprints for modular
+            page routing, Jinja2 HTML templates for dynamic rendering, and custom CSS for layout and styling.
+        </p>
+        <p>
+            This project demonstrates core web development skills including server-side routing, template
+            inheritance, static file management, and responsive CSS layout — all within a clean, reproducible
+            Python environment.
+        </p>
+        <a class="project-link" href="https://github.com/rgogerty16/jhu_software_concepts" target="_blank">
+            View on GitHub &rarr;
+        </a>
+    </div>
+</section>
+{% endblock %}

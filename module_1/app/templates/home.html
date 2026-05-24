@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}Home | Ryan Gogerty{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="bio-section">
+        <div class="bio-text">
+            <h1>Ryan Gogerty</h1>
+            <h2>Technology Analyst &amp; JHU Master's Student</h2>
+            <p>
+                I'm Ryan Gogerty, a technology analyst at Barclays and an AI master's student at JHU
+                with a passion for generative AI, entrepreneurship, and building technology that helps
+                people learn and work more effectively. I enjoy developing AI-powered projects, exploring
+                emerging technologies (both physical and virtual), and solving business problems.
+            </p>
+            <p>
+                I also have a passion for a variety of hobbies which range from playing and watching any
+                variety of sports to cooking, gardening, going to the gym, and playing piano. I'm really
+                looking forward to seeing what kind of problems AI will solve in the future and being a
+                part of that any way I can.
+            </p>
+        </div>
+        <div class="bio-image">
+            <img src="{{ url_for('static', filename='img/profile.jpg') }}" alt="Ryan Gogerty">
+        </div>
+    </div>
+</section>
+{% endblock %}

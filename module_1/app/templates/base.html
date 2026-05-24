@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Ryan Gogerty{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="site-title">Ryan Gogerty</div>
+        <nav>
+            <ul>
+                <li class="{{ 'active' if request.endpoint == 'home.index' else '' }}">
+                    <a href="{{ url_for('home.index') }}">Home</a>
+                </li>
+                <li class="{{ 'active' if request.endpoint == 'contact.contact' else '' }}">
+                    <a href="{{ url_for('contact.contact') }}">Contact</a>
+                </li>
+                <li class="{{ 'active' if request.endpoint == 'projects.projects' else '' }}">
+                    <a href="{{ url_for('projects.projects') }}">Projects</a>
+                </li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Ryan Gogerty</p>
+    </footer>
+</body>
+</html>

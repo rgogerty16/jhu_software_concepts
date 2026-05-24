@@ -1,0 +1,218 @@
+/* ── Base ── */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #333;
+    background-color: #f5f5f5;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── Header & Nav ── */
+header {
+    background-color: #1a1a2e;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.site-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #e0e0e0;
+    letter-spacing: 0.03em;
+}
+
+nav ul {
+    list-style: none;
+    display: flex;
+    gap: 0.25rem;
+}
+
+nav ul li a {
+    display: block;
+    padding: 0.45rem 1rem;
+    color: #ccc;
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 0.95rem;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+nav ul li a:hover {
+    background-color: #2d2d50;
+    color: #fff;
+}
+
+/* Active/current tab — highlighted in red */
+nav ul li.active a {
+    background-color: #e94560;
+    color: #fff;
+    font-weight: 600;
+}
+
+/* ── Main content ── */
+main {
+    flex: 1;
+    padding: 2.5rem 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* ── Home page ── */
+.hero {
+    margin-top: 1rem;
+}
+
+.bio-section {
+    display: flex;
+    gap: 2.5rem;
+    align-items: flex-start;
+}
+
+/* bio text on the left */
+.bio-text {
+    flex: 2;
+}
+
+.bio-text h1 {
+    font-size: 2.2rem;
+    color: #1a1a2e;
+    margin-bottom: 0.4rem;
+}
+
+.bio-text h2 {
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: #777;
+    margin-bottom: 1.5rem;
+}
+
+.bio-text p {
+    line-height: 1.8;
+    color: #444;
+    margin-bottom: 1rem;
+}
+
+/* image on the right */
+.bio-image {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    padding-top: 0.5rem;
+}
+
+.bio-image img {
+    width: 100%;
+    max-width: 280px;
+    border-radius: 10px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    object-fit: cover;
+}
+
+/* ── Contact page ── */
+.contact-section h1 {
+    font-size: 2rem;
+    color: #1a1a2e;
+    margin-bottom: 1.5rem;
+}
+
+.contact-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 2rem 2.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+}
+
+.contact-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.contact-label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #999;
+    font-weight: 600;
+}
+
+.contact-item a {
+    font-size: 1.05rem;
+    color: #e94560;
+    text-decoration: none;
+}
+
+.contact-item a:hover {
+    text-decoration: underline;
+}
+
+/* ── Projects page ── */
+.projects-section h1 {
+    font-size: 2rem;
+    color: #1a1a2e;
+    margin-bottom: 1.5rem;
+}
+
+.project-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 2rem 2.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    margin-bottom: 1.5rem;
+}
+
+.project-card h2 {
+    font-size: 1.4rem;
+    color: #1a1a2e;
+    margin-bottom: 1rem;
+}
+
+.project-card p {
+    line-height: 1.75;
+    color: #444;
+    margin-bottom: 0.9rem;
+}
+
+.project-link {
+    display: inline-block;
+    margin-top: 0.5rem;
+    color: #e94560;
+    font-weight: 600;
+    text-decoration: none;
+    border: 2px solid #e94560;
+    padding: 0.4rem 1rem;
+    border-radius: 4px;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.project-link:hover {
+    background-color: #e94560;
+    color: #fff;
+}
+
+/* ── Footer ── */
+footer {
+    background-color: #1a1a2e;
+    color: #666;
+    text-align: center;
+    padding: 1rem;
+    font-size: 0.85rem;
+}
