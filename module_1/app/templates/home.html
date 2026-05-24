@@ -1,12 +1,17 @@
+<!-- Inherit the shared layout (header, nav, footer) from base.html -->
 {% extends 'base.html' %}
 
+<!-- Override the title block defined in base.html -->
 {% block title %}Home | Ryan Gogerty{% endblock %}
 
+<!-- Inject this page's body into the content block in base.html -->
 {% block content %}
 <section class="hero">
+    <!-- Two-column layout: bio-text on left, bio-image on right (controlled by CSS flexbox) -->
     <div class="bio-section">
         <div class="bio-text">
             <h1>Ryan Gogerty</h1>
+            <!-- &amp; is the HTML escape for & — raw & can confuse the browser parser -->
             <h2>Technology Analyst &amp; JHU Master's Student</h2>
             <p>
                 I'm Ryan Gogerty, a technology analyst at Barclays and an AI master's student at JHU
@@ -22,6 +27,7 @@
             </p>
         </div>
         <div class="bio-image">
+            <!-- url_for() generates the path to the image inside the static folder -->
             <img src="{{ url_for('static', filename='img/profile.jpg') }}" alt="Ryan Gogerty">
         </div>
     </div>

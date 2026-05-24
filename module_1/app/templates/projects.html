@@ -1,3 +1,4 @@
+<!-- Inherit the shared layout (header, nav, footer) from base.html -->
 {% extends 'base.html' %}
 
 {% block title %}Projects | Ryan Gogerty{% endblock %}
@@ -6,6 +7,7 @@
 <section class="projects-section">
     <h1>Projects</h1>
 
+    <!-- Each project gets its own card; add more project-card divs for future modules -->
     <div class="project-card">
         <h2>Module 1: Personal Flask Website</h2>
         <p>
@@ -19,6 +21,7 @@
             inheritance, static file management, and responsive CSS layout — all within a clean, reproducible
             Python environment.
         </p>
+        <!-- &rarr; renders as → | target="_blank" opens in a new tab -->
         <a class="project-link" href="https://github.com/rgogerty16/jhu_software_concepts" target="_blank">
             View on GitHub &rarr;
         </a>

@@ -1,3 +1,4 @@
+<!-- Inherit the shared layout (header, nav, footer) from base.html -->
 {% extends 'base.html' %}
 
 {% block title %}Contact | Ryan Gogerty{% endblock %}
@@ -8,10 +9,12 @@
     <div class="contact-card">
         <div class="contact-item">
             <span class="contact-label">Email</span>
+            <!-- mailto: opens the user's default email client with this address pre-filled -->
             <a href="mailto:rgogerty16@gmail.com">rgogerty16@gmail.com</a>
         </div>
         <div class="contact-item">
             <span class="contact-label">LinkedIn</span>
+            <!-- target="_blank" opens the link in a new browser tab -->
             <a href="https://www.linkedin.com/in/ryan-gogerty/" target="_blank">
                 linkedin.com/in/ryan-gogerty
             </a>

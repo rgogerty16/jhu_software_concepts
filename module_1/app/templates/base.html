@@ -3,14 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!--
+        {% block %} defines a named slot that child templates can override.
+        If a child doesn't override 'title', this default text is used.
+    -->
     <title>{% block title %}Ryan Gogerty{% endblock %}</title>
+
+    <!--
+        url_for() generates the correct URL to a static file.
+        Using it instead of a hardcoded path keeps links valid across environments.
+    -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+    <!--
+        This header and nav are defined once here and inherited by every page.
+        Child templates extend this file with: {% extends 'base.html' %}
+    -->
     <header>
         <div class="site-title">Ryan Gogerty</div>
         <nav>
             <ul>
+                <!--
+                    request.endpoint holds the name of the currently active route
+                    (e.g. 'home.index' = the index() function inside the home blueprint).
+                    When it matches, we add the CSS class 'active' to highlight that tab.
+                    url_for('home.index') generates the href URL from the route name.
+                -->
                 <li class="{{ 'active' if request.endpoint == 'home.index' else '' }}">
                     <a href="{{ url_for('home.index') }}">Home</a>
                 </li>
@@ -25,6 +45,7 @@
     </header>
 
     <main>
+        <!-- Child templates inject their page-specific HTML into this slot -->
         {% block content %}{% endblock %}
     </main>
 
