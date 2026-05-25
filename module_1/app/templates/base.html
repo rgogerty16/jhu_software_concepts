@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <!--
-        {% block %} defines a named slot that child templates can override.
+        'block' defines a named slot that child templates can override.
         If a child doesn't override 'title', this default text is used.
     -->
     <title>{% block title %}Ryan Gogerty{% endblock %}</title>
@@ -19,7 +19,7 @@
 <body>
     <!--
         This header and nav are defined once here and inherited by every page.
-        Child templates extend this file with: {% extends 'base.html' %}
+        Child templates declare 'extends base.html' at the top to pull this in.
     -->
     <header>
         <div class="site-title">Ryan Gogerty</div>
