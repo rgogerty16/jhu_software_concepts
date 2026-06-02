@@ -5,6 +5,7 @@ Workflow: urllib3 (URL construction) → Selenium (render page)
 """
 
 import json
+import re
 import time
 import urllib3
 from urllib.parse import urljoin, urlparse, urlencode
@@ -149,50 +150,182 @@ def _get_page_source(driver, url):
 # ---------------------------------------------------------------------------
 
 def _parse_page(html):
-    """Parse one rendered survey page and return a list of raw entry dicts.
+    """Parse one rendered survey page and return a list of entry dicts.
 
-    Passes the HTML to BeautifulSoup, finds all applicant row elements,
-    and calls _parse_entry() on each one.
+    Page structure (confirmed by live inspection):
+      Each applicant entry spans 2–3 consecutive <tr> elements:
+        Row 1 (main):   university, program, degree, date, status, url
+        Row 2 (detail): semester, year, student_type  (class="tw-border-none")
+        Row 3 (comment, optional): free-text comment  (class="tw-border-none")
+
+    We identify the start of a new entry by the presence of the university
+    div (class contains "tw-font-medium"), then collect the following
+    tw-border-none rows as belonging to that entry.
 
     Args:
         html: Rendered HTML string from _get_page_source().
 
     Returns:
-        List of dicts, one per applicant row on the page.
+        List of dicts, one per applicant entry on the page.
     """
-    pass
+    soup = BeautifulSoup(html, "lxml")
+    all_rows = soup.find_all("tr")
+
+    entries = []
+    current_group = []
+
+    for row in all_rows:
+        # The university div has exactly these three classes; mobile status badges
+        # also have tw-font-medium but lack tw-text-gray-900 and tw-text-sm,
+        # so this triple-class check avoids false positives.
+        is_main = row.find(
+            "div",
+            class_=lambda c: c and all(
+                cls in c for cls in ["tw-font-medium", "tw-text-gray-900", "tw-text-sm"]
+            )
+        )
+        if is_main:
+            # This row is the start of a new entry; save the previous group first
+            if current_group:
+                entry = _parse_entry(current_group)
+                if entry:
+                    entries.append(entry)
+            current_group = [row]
+        elif current_group:
+
+            # A detail or comment row belonging to the current entry
+            current_group.append(row)
+
+    # Don't forget the final group on the page
+    if current_group:
+        entry = _parse_entry(current_group)
+        if entry:
+            entries.append(entry)
+
+    return entries
 
 
-def _parse_entry(row):
-    """Extract all required fields from a single BeautifulSoup row element.
+def _parse_entry(rows):
+    """Extract all required fields from one applicant entry (a group of <tr> tags).
 
-    Handles missing/None values by returning an empty string for each
-    missing field so every record has the same keys.
+    Always returns the same set of keys so every record in applicant_data.json
+    has a consistent shape. Missing values are None.
 
     Args:
-        row: BeautifulSoup Tag representing one applicant row.
+        rows: List of BeautifulSoup <tr> Tags — [main_row, detail_row, (comment_row)]
 
     Returns:
-        Dict with keys: program, university, status, date_added, url,
-        comments, semester, year, student_type, gre, gre_v, gre_aw,
-        gpa, degree, raw_program.
+        Dict with keys: university, program, raw_program, degree, status,
+        notification_date, date_added, semester, year, student_type, url,
+        comments, gpa, gre, gre_v, gre_aw.
     """
-    pass
+    main_row = rows[0]
+    detail_row = rows[1] if len(rows) > 1 else None
+    extra_rows = rows[2:] if len(rows) > 2 else []
+
+    tds = main_row.find_all("td")
+
+    # --- University (td[0]) ---
+    univ_div = main_row.find(
+        "div",
+        class_=lambda c: c and all(
+            cls in c for cls in ["tw-font-medium", "tw-text-gray-900", "tw-text-sm"]
+        )
+    )
+    university = univ_div.get_text(strip=True) if univ_div else ""
+
+    # --- Program + degree (td[1]) ---
+    # td[1] contains: <div class="tw-text-gray-900"><span>Program</span>...<span>Degree</span></div>
+    program_td = tds[1] if len(tds) > 1 else None
+    program_div = program_td.find("div") if program_td else None
+    spans = program_div.find_all("span") if program_div else []
+    program = spans[0].get_text(strip=True) if spans else ""
+    degree = spans[1].get_text(strip=True) if len(spans) > 1 else ""
+    # raw_program preserves the original combined text for traceability
+    raw_program = program_div.get_text(separator=" ", strip=True) if program_div else ""
+
+    # --- Date added (td[2]) ---
+    date_td = tds[2] if len(tds) > 2 else None
+    date_added = date_td.get_text(strip=True) if date_td else ""
+
+    # --- Status + notification date (td[3]) ---
+    # Raw text is e.g. "Rejected on May 27" or "Accepted on May 27"
+    status_td = tds[3] if len(tds) > 3 else None
+    raw_status = status_td.get_text(strip=True) if status_td else ""
+    status = _normalize_status(raw_status)
+    date_match = re.search(r"on\s+(.+)$", raw_status, re.IGNORECASE)
+    notification_date = date_match.group(1).strip() if date_match else ""
+
+    # --- URL to individual result page (td[4] contains the link icon) ---
+    link = main_row.find("a", href=True)
+    entry_url = f"{BASE_URL}{link['href']}" if link else ""
+
+    # --- Semester, year, student type (detail row badges) ---
+    semester = ""
+    year = ""
+    student_type = ""
+    if detail_row:
+        for badge in detail_row.find_all("div", class_="tw-rounded-md"):
+            text = badge.get_text(strip=True)
+            # Semester badge: "Fall 2026", "Spring 2025", etc.
+            if re.match(r"(Fall|Spring|Summer|Winter)\s+\d{4}$", text):
+                parts = text.split()
+                semester = parts[0]
+                year = parts[1]
+            # Student type badge
+            elif text in ("American", "International", "Other"):
+                student_type = text
+
+    # --- Comments (optional row containing a <p> tag) ---
+    comments = ""
+    for extra_row in extra_rows:
+        p_tag = extra_row.find("p")
+        if p_tag:
+            comments = p_tag.get_text(strip=True)
+            break
+
+    return {
+        "university": university,
+        "program": program,
+        "raw_program": raw_program,
+        "degree": degree,
+        "status": status,
+        "notification_date": notification_date,
+        "date_added": date_added,
+        "semester": semester,
+        "year": year,
+        "student_type": student_type,
+        "url": entry_url,
+        "comments": comments,
+        "gpa": None,
+        "gre": None,
+        "gre_v": None,
+        "gre_aw": None,
+    }
 
 
 def _normalize_status(raw_status):
-    """Normalize a raw status string to 'Accepted', 'Rejected', or 'Waitlisted'.
+    """Normalize a raw status string to a canonical form.
 
-    Grad Cafe status strings are not always consistent (e.g. 'A', 'Accepted',
-    'accepted'). This maps them to a canonical form.
+    Raw text from the page is e.g. "Rejected on May 27" or "Accepted on May 27".
+    We lowercase and keyword-match to handle any variation.
 
     Args:
         raw_status: Raw status string scraped from the page.
 
     Returns:
-        Normalized status string, or empty string if unrecognized.
+        One of: 'Accepted', 'Rejected', 'Waitlisted', 'Interview', or ''.
     """
-    pass
+    s = raw_status.lower()
+    if "accept" in s:
+        return "Accepted"
+    elif "reject" in s:
+        return "Rejected"
+    elif "waitlist" in s or "wait list" in s:
+        return "Waitlisted"
+    elif "interview" in s:
+        return "Interview"
+    return ""
 
 
 # ---------------------------------------------------------------------------
