@@ -17,8 +17,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 
-BASE_URL = "https://www.gradcafe.com"
-SURVEY_PATH = "/survey/"
+BASE_URL = "https://www.thegradcafe.com"
+SURVEY_PATH = "/survey"
 OUTPUT_FILE = "applicant_data.json"
 REQUEST_DELAY = 2       # seconds to wait between page requests (be polite)
 TARGET_ENTRIES = 30000
@@ -61,16 +61,18 @@ def save_data(data, filepath=OUTPUT_FILE):
 def _build_url(page_number):
     """Construct the Grad Cafe survey URL for a given page number.
 
-    Uses urllib3 + urljoin to assemble the URL so we never manually
-    concatenate strings and can easily swap the base if it changes.
+    Uses urljoin + urlencode so we never manually concatenate strings.
+    Confirmed URL pattern: https://www.thegradcafe.com/survey?page=N
 
     Args:
         page_number: Integer page index (1-based).
 
     Returns:
-        Full URL string, e.g. "https://www.gradcafe.com/survey/?page=2"
+        Full URL string, e.g. "https://www.thegradcafe.com/survey?page=2"
     """
-    pass
+    base = urljoin(BASE_URL, SURVEY_PATH)
+    query = urlencode({"page": page_number})
+    return f"{base}?{query}"
 
 
 def _validate_url(url):
@@ -82,7 +84,8 @@ def _validate_url(url):
     Returns:
         True if valid, False otherwise.
     """
-    pass
+    parsed = urlparse(url)
+    return bool(parsed.scheme and parsed.netloc)
 
 
 # ---------------------------------------------------------------------------
