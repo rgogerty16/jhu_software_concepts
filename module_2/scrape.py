@@ -101,7 +101,16 @@ def _init_driver():
     Returns:
         A configured selenium.webdriver.Chrome instance.
     """
-    pass
+    options = webdriver.ChromeOptions()
+    options.add_argument("--headless=new")       # run without a visible window
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--window-size=1280,800")
+
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=options)
+    driver.set_page_load_timeout(30)
+    return driver
 
 
 def _get_page_source(driver, url):
@@ -110,15 +119,29 @@ def _get_page_source(driver, url):
     Uses an explicit Selenium wait (not sleep) so we only proceed once the
     result rows are actually present in the DOM.
 
+    Page structure confirmed: each entry is 2–3 <tr> elements. Detail rows
+    always carry class "tw-border-none", so we wait for that class to appear
+    as a signal that at least one full entry has rendered.
+
     Args:
         driver: Active Chrome WebDriver from _init_driver().
         url:    Page URL to load.
 
     Returns:
         Rendered HTML string (driver.page_source) after results load.
-        Returns None if the expected element never appears (timeout).
+        Returns None if the expected element never appears (timeout) or
+        if the site rejects the request.
     """
-    pass
+    try:
+        driver.get(url)
+        # Wait until at least one detail row is in the DOM
+        WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.CLASS_NAME, "tw-border-none"))
+        )
+        return driver.page_source
+    except Exception as e:
+        print(f"  [warn] Could not load {url}: {e}")
+        return None
 
 
 # ---------------------------------------------------------------------------
