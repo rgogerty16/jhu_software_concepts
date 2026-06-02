@@ -32,27 +32,76 @@ TARGET_ENTRIES = 30000
 def scrape_data(max_entries=TARGET_ENTRIES):
     """Pull applicant entries from Grad Cafe and return them as a list of dicts.
 
-    Initializes a Selenium driver, iterates through paginated survey results,
-    parses each page with BeautifulSoup, and collects raw applicant records
-    until max_entries is reached or the site has no more pages.
+    Iterates through paginated survey results, parsing each page with
+    BeautifulSoup until max_entries is reached, the site stops returning
+    results, or the site rejects a request (rate-limit / block).
+
+    Polite behaviour:
+      - REQUEST_DELAY seconds between every page load
+      - Stops immediately on any None response from _get_page_source,
+        which signals the site has blocked or rate-limited the scraper
 
     Args:
         max_entries: Stop collecting after this many entries.
 
     Returns:
-        List of raw applicant dicts (one per survey row).
+        List of applicant dicts, each with the keys defined in _parse_entry.
     """
-    pass
+    results = []
+    page = 1
+    driver = _init_driver()
+
+    try:
+        while len(results) < max_entries:
+            url = _build_url(page)
+
+            if not _validate_url(url):
+                print(f"  [error] Invalid URL on page {page}, stopping.")
+                break
+
+            html = _get_page_source(driver, url)
+
+            # None means the site timed out, blocked, or rate-limited us
+            if html is None:
+                print(f"  [warn] No response on page {page} — stopping scrape.")
+                break
+
+            entries = _parse_page(html)
+
+            # An empty page means we've gone past the last page of results
+            if not entries:
+                print(f"  [info] No entries on page {page} — end of results.")
+                break
+
+            results.extend(entries)
+
+            if page % 50 == 0 or len(results) >= max_entries:
+                print(f"  Page {page:>5} | collected {len(results):>6,} entries")
+
+            page += 1
+            time.sleep(REQUEST_DELAY)
+
+    finally:
+        # Always close the browser, even if an exception is raised mid-scrape
+        driver.quit()
+
+    # Trim to exactly max_entries in case the last page pushed us over
+    return results[:max_entries]
 
 
 def save_data(data, filepath=OUTPUT_FILE):
     """Serialize applicant data to a JSON file.
 
+    Writes with indent=2 so the file is human-readable and easy to
+    inspect without a JSON viewer.
+
     Args:
         data:     List of applicant dicts returned by scrape_data().
         filepath: Destination filename (default: applicant_data.json).
     """
-    pass
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    print(f"Saved {len(data):,} entries to {filepath}")
 
 
 # ---------------------------------------------------------------------------
