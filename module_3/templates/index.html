@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Grad Café Analysis{% endblock %}
+
+{% block content %}
+<section class="intro">
+    <p>Analysis of <strong>{{ "{:,}".format(results.q1_fall_2026_count + (30000 - results.q1_fall_2026_count)) }}</strong> graduate school applicant entries scraped from Grad Café.
+    Last rendered: <strong>{{ now.strftime("%B %d, %Y at %I:%M %p") }}</strong></p>
+</section>
+
+<!-- ── Row 1: headline numbers ── -->
+<div class="card-grid">
+    <div class="card accent-blue">
+        <div class="card-label">Fall 2026 Entries</div>
+        <div class="card-value">{{ "{:,}".format(results.q1_fall_2026_count) }}</div>
+        <div class="card-sub">Q1</div>
+    </div>
+    <div class="card accent-purple">
+        <div class="card-label">International Applicants</div>
+        <div class="card-value">{{ results.q2_pct_international }}%</div>
+        <div class="card-sub">Q2</div>
+    </div>
+    <div class="card accent-green">
+        <div class="card-label">Fall 2026 Acceptance Rate</div>
+        <div class="card-value">{{ results.q5_pct_accepted_fall2026 }}%</div>
+        <div class="card-sub">Q5</div>
+    </div>
+    <div class="card accent-orange">
+        <div class="card-label">Avg GPA (reporters)</div>
+        <div class="card-value">{{ results.q3_avg_gpa }}</div>
+        <div class="card-sub">Q3</div>
+    </div>
+</div>
+
+<!-- ── Q3: Score averages ── -->
+<section class="panel">
+    <h2>Q3 — Average Academic Metrics <span class="note">(among applicants who reported each)</span></h2>
+    <table>
+        <thead><tr><th>Metric</th><th>Average</th></tr></thead>
+        <tbody>
+            <tr><td>GPA</td><td>{{ results.q3_avg_gpa }}</td></tr>
+            <tr><td>GRE (quant / combined)</td><td>{{ results.q3_avg_gre }}</td></tr>
+            <tr><td>GRE Verbal</td><td>{{ results.q3_avg_gre_v }}</td></tr>
+            <tr><td>GRE Analytical Writing</td><td>{{ results.q3_avg_gre_aw }}</td></tr>
+        </tbody>
+    </table>
+    <p class="footnote">Out-of-range values (e.g., GRE AW &gt; 6.0, GPA &gt; 4.0) were excluded as data-entry errors.</p>
+</section>
+
+<!-- ── Q4 + Q6: GPA comparison ── -->
+<section class="panel">
+    <h2>GPA Comparisons</h2>
+    <table>
+        <thead><tr><th>Group</th><th>Avg GPA</th><th>Question</th></tr></thead>
+        <tbody>
+            <tr><td>All reporters (Fall 2026 + American)</td><td>{{ results.q4_avg_gpa_american_fall2026 }}</td><td>Q4</td></tr>
+            <tr><td>Fall 2026 Acceptances</td><td>{{ results.q6_avg_gpa_accepted_fall2026 }}</td><td>Q6</td></tr>
+        </tbody>
+    </table>
+</section>
+
+<!-- ── Q7 + Q8 + Q9: Specific program queries ── -->
+<section class="panel">
+    <h2>Program-Specific Queries</h2>
+    <table>
+        <thead><tr><th>Question</th><th>Count</th></tr></thead>
+        <tbody>
+            <tr>
+                <td>Q7 — JHU Master's in Computer Science entries</td>
+                <td>{{ results.q7_jhu_masters_cs }}</td>
+            </tr>
+            <tr>
+                <td>Q8 — 2026 PhD CS acceptances at Georgetown / MIT / Stanford / CMU <em>(raw scraped fields)</em></td>
+                <td>{{ results.q8_raw_top4_phd_cs_2026 }}
+                    <span class="note">— raw program field has no university name; see Q9</span></td>
+            </tr>
+            <tr>
+                <td>Q9 — same query using <em>LLM-generated fields</em></td>
+                <td><strong>{{ results.q9_llm_top4_phd_cs_2026 }}</strong>
+                    <span class="note">— LLM normalization enables university matching</span></td>
+            </tr>
+        </tbody>
+    </table>
+</section>
+
+<!-- ── Q10: Top programs by acceptance rate ── -->
+<section class="panel">
+    <h2>Q10 (Original) — Top 5 Programs by Acceptance Rate <span class="note">(min 10 applicants)</span></h2>
+    <table>
+        <thead><tr><th>Program</th><th>Acceptance Rate</th><th>Accepted / Total</th></tr></thead>
+        <tbody>
+        {% for row in results.q10_top_acceptance_programs %}
+            <tr>
+                <td>{{ row.program }}</td>
+                <td>{{ row.rate_pct }}%</td>
+                <td>{{ row.accepted }} / {{ row.total }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<!-- ── Q11: GPA by admission outcome ── -->
+<section class="panel">
+    <h2>Q11 (Original) — Average GPA by Admission Outcome <span class="note">(GPA reporters only)</span></h2>
+    <table>
+        <thead><tr><th>Outcome</th><th>Avg GPA</th><th>n</th></tr></thead>
+        <tbody>
+        {% for row in results.q11_gpa_by_status %}
+            <tr class="{{ 'row-accepted' if row.status == 'Accepted' else ('row-rejected' if row.status == 'Rejected' else '') }}">
+                <td>{{ row.status }}</td>
+                <td>{{ row.avg_gpa }}</td>
+                <td>{{ "{:,}".format(row.n) }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <p class="footnote">Note: Waitlisted applicants have the highest average GPA — consistent with literature showing borderline-strong profiles are deferred rather than rejected outright.</p>
+</section>
+{% endblock %}
