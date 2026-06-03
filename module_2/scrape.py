@@ -7,7 +7,6 @@ Workflow: urllib3 (URL construction) → Selenium (render page)
 import json
 import re
 import time
-import urllib3
 from urllib.parse import urljoin, urlparse, urlencode
 
 from bs4 import BeautifulSoup
@@ -309,10 +308,14 @@ def _parse_entry(rows):
     link = main_row.find("a", href=True)
     entry_url = f"{BASE_URL}{link['href']}" if link else ""
 
-    # --- Semester, year, student type (detail row badges) ---
+    # --- Semester, year, student type, and score badges (detail row) ---
     semester = ""
     year = ""
     student_type = ""
+    gpa = None
+    gre = None
+    gre_v = None
+    gre_aw = None
     if detail_row:
         for badge in detail_row.find_all("div", class_="tw-rounded-md"):
             text = badge.get_text(strip=True)
@@ -324,6 +327,15 @@ def _parse_entry(rows):
             # Student type badge
             elif text in ("American", "International", "Other"):
                 student_type = text
+            # Score badges: "GPA 3.90", "GRE 320", "GRE V 165", "GRE AW 4.00"
+            elif m := re.match(r"GPA\s+([\d.]+)$", text):
+                gpa = float(m.group(1))
+            elif m := re.match(r"GRE V\s+([\d.]+)$", text):
+                gre_v = float(m.group(1))
+            elif m := re.match(r"GRE AW\s+([\d.]+)$", text):
+                gre_aw = float(m.group(1))
+            elif m := re.match(r"GRE\s+([\d.]+)$", text):
+                gre = float(m.group(1))
 
     # --- Comments (optional row containing a <p> tag) ---
     comments = ""
@@ -346,10 +358,10 @@ def _parse_entry(rows):
         "student_type": student_type,
         "url": entry_url,
         "comments": comments,
-        "gpa": None,
-        "gre": None,
-        "gre_v": None,
-        "gre_aw": None,
+        "gpa": gpa,
+        "gre": gre,
+        "gre_v": gre_v,
+        "gre_aw": gre_aw,
     }
 
 
