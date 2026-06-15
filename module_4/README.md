@@ -79,7 +79,7 @@ pytest -m integration   # End-to-end pull → update → render flows
 
 Full developer docs are published on Read the Docs:
 
-**https://jhu-software-concepts.readthedocs.io/en/latest/**
+**https://rgogerty16-jhu-software-concepts.readthedocs.io/en/latest/**
 
 Covers setup, three-tier architecture, API reference (auto-generated from docstrings),
 testing guide, and operational notes.
