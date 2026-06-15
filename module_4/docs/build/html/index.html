@@ -1,0 +1,169 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Grad Café Analytics — Developer Documentation &mdash; Grad Café Analytics 4.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=9f5556dd"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Overview &amp; Setup" href="overview.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            Grad Café Analytics
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview &amp; Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing_guide.html">Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operational_notes.html">Operational Notes</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">Grad Café Analytics</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Grad Café Analytics — Developer Documentation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="grad-cafe-analytics-developer-documentation">
+<h1>Grad Café Analytics — Developer Documentation<a class="headerlink" href="#grad-cafe-analytics-developer-documentation" title="Link to this heading"></a></h1>
+<p>This documentation covers the Grad Café Analytics application built across
+JHU Modern Concepts in Python, Modules 2–4. It is intended for developers
+who want to run, test, or extend the service.</p>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview &amp; Setup</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="overview.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="overview.html#environment-variables">Environment Variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="overview.html#local-setup">Local Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="overview.html#running-tests">Running Tests</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#web-layer-app-py">Web Layer (<code class="docutils literal notranslate"><span class="pre">app.py</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#etl-layer">ETL Layer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#data-layer">Data Layer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#dependency-injection-pattern">Dependency Injection Pattern</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api_reference.html#module-app">Flask Application (<code class="docutils literal notranslate"><span class="pre">app.py</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api_reference.html#module-db">Database Helper (<code class="docutils literal notranslate"><span class="pre">db.py</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api_reference.html#module-query_data">SQL Queries (<code class="docutils literal notranslate"><span class="pre">query_data.py</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api_reference.html#module-load_data">Data Loading (<code class="docutils literal notranslate"><span class="pre">load_data.py</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api_reference.html#module-pull_and_load">Scrape + Load Orchestrator (<code class="docutils literal notranslate"><span class="pre">pull_and_load.py</span></code>)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="testing_guide.html">Testing Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="testing_guide.html#running-tests">Running Tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="testing_guide.html#markers">Markers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="testing_guide.html#test-fixtures-conftest-py">Test Fixtures (<code class="docutils literal notranslate"><span class="pre">conftest.py</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="testing_guide.html#stable-ui-selectors">Stable UI Selectors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="testing_guide.html#test-doubles">Test Doubles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="testing_guide.html#coverage">Coverage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="testing_guide.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="operational_notes.html">Operational Notes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="operational_notes.html#busy-state-policy">Busy-State Policy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operational_notes.html#idempotency">Idempotency</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operational_notes.html#uniqueness-keys">Uniqueness Keys</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operational_notes.html#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operational_notes.html#database-backup-and-restore">Database Backup and Restore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operational_notes.html#continuous-integration">Continuous Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operational_notes.html#adding-new-queries">Adding New Queries</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Link to this heading"></a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="overview.html" class="btn btn-neutral float-right" title="Overview &amp; Setup" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Ryan Gogerty.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

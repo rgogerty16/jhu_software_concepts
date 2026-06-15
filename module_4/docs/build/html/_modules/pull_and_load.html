@@ -1,0 +1,174 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pull_and_load &mdash; Grad Café Analytics 4.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=9f5556dd"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Grad Café Analytics
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview &amp; Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing_guide.html">Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operational_notes.html">Operational Notes</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Grad Café Analytics</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">pull_and_load</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for pull_and_load</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">pull_and_load.py — Scrape new Grad Café entries and add them to the database.</span>
+
+<span class="sd">Called by app.py via subprocess when the user clicks &quot;Pull Data&quot;.</span>
+<span class="sd">Scrapes a fresh batch from Grad Café and inserts only new records</span>
+<span class="sd">(ON CONFLICT DO NOTHING skips duplicates).</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+
+<span class="n">TEMP_FILE</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">gettempdir</span><span class="p">(),</span> <span class="s2">&quot;gradcafe_new.json&quot;</span><span class="p">)</span>
+<span class="n">NEW_PAGES</span> <span class="o">=</span> <span class="mi">50</span>  <span class="c1"># scrape ~1,000 new entries per pull (polite batch size)</span>
+
+
+<div class="viewcode-block" id="pull_and_load">
+<a class="viewcode-back" href="../api_reference.html#pull_and_load.pull_and_load">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">pull_and_load</span><span class="p">(</span><span class="n">scrape_fn</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">save_fn</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">load_fn</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">database_url</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Scrape new data and load it into the database.</span>
+
+<span class="sd">    Parameters are injectable so that tests can pass fake implementations</span>
+<span class="sd">    without importing selenium or hitting the network.</span>
+
+<span class="sd">    :param scrape_fn: Callable matching scrape_data(max_entries=N) signature.</span>
+<span class="sd">                      Defaults to the real scrape_data from module_2.</span>
+<span class="sd">    :type scrape_fn: callable or None</span>
+<span class="sd">    :param save_fn: Callable matching save_data(records, filepath) signature.</span>
+<span class="sd">                    Defaults to the real save_data from module_2.</span>
+<span class="sd">    :type save_fn: callable or None</span>
+<span class="sd">    :param load_fn: Callable matching load_data(filepath, database_url) signature.</span>
+<span class="sd">                    Defaults to the real load_data from this package.</span>
+<span class="sd">    :type load_fn: callable or None</span>
+<span class="sd">    :param database_url: Postgres connection string passed to load_fn.</span>
+<span class="sd">    :type database_url: str or None</span>
+<span class="sd">    :returns: None</span>
+<span class="sd">    :rtype: None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Lazy-import the real implementations only when not injected.</span>
+    <span class="c1"># This keeps the module importable in tests even if module_2 isn&#39;t on the path.</span>
+    <span class="k">if</span> <span class="n">scrape_fn</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">save_fn</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># pragma: no cover</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">),</span> <span class="s2">&quot;../module_2&quot;</span><span class="p">))</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">scrape</span><span class="w"> </span><span class="kn">import</span> <span class="n">scrape_data</span><span class="p">,</span> <span class="n">save_data</span>
+        <span class="k">if</span> <span class="n">scrape_fn</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">scrape_fn</span> <span class="o">=</span> <span class="n">scrape_data</span>
+        <span class="k">if</span> <span class="n">save_fn</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">save_fn</span> <span class="o">=</span> <span class="n">save_data</span>
+
+    <span class="k">if</span> <span class="n">load_fn</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">load_data</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_data</span>
+        <span class="n">load_fn</span> <span class="o">=</span> <span class="n">load_data</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[pull_and_load] Starting fresh scrape batch ...&quot;</span><span class="p">)</span>
+    <span class="n">records</span> <span class="o">=</span> <span class="n">scrape_fn</span><span class="p">(</span><span class="n">max_entries</span><span class="o">=</span><span class="n">NEW_PAGES</span> <span class="o">*</span> <span class="mi">20</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">records</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[pull_and_load] No records returned.&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">save_fn</span><span class="p">(</span><span class="n">records</span><span class="p">,</span> <span class="n">TEMP_FILE</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[pull_and_load] Saved </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">records</span><span class="p">)</span><span class="si">}</span><span class="s2"> records to </span><span class="si">{</span><span class="n">TEMP_FILE</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">total</span> <span class="o">=</span> <span class="n">load_fn</span><span class="p">(</span><span class="n">TEMP_FILE</span><span class="p">,</span> <span class="n">database_url</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[pull_and_load] DB now contains </span><span class="si">{</span><span class="n">total</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> rows (duplicates skipped)&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>  <span class="c1"># pragma: no cover</span>
+    <span class="n">pull_and_load</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Ryan Gogerty.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

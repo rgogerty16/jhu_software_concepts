@@ -1,0 +1,300 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API Reference &mdash; Grad Café Analytics 4.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=9f5556dd"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Testing Guide" href="testing_guide.html" />
+    <link rel="prev" title="Architecture" href="architecture.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Grad Café Analytics
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview &amp; Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Architecture</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-app">Flask Application (<code class="docutils literal notranslate"><span class="pre">app.py</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#app.create_app"><code class="docutils literal notranslate"><span class="pre">create_app()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-db">Database Helper (<code class="docutils literal notranslate"><span class="pre">db.py</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#db.get_conn"><code class="docutils literal notranslate"><span class="pre">get_conn()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-query_data">SQL Queries (<code class="docutils literal notranslate"><span class="pre">query_data.py</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#query_data.print_results"><code class="docutils literal notranslate"><span class="pre">print_results()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#query_data.run_queries"><code class="docutils literal notranslate"><span class="pre">run_queries()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-load_data">Data Loading (<code class="docutils literal notranslate"><span class="pre">load_data.py</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#load_data.load_data"><code class="docutils literal notranslate"><span class="pre">load_data()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-pull_and_load">Scrape + Load Orchestrator (<code class="docutils literal notranslate"><span class="pre">pull_and_load.py</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pull_and_load.pull_and_load"><code class="docutils literal notranslate"><span class="pre">pull_and_load()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="testing_guide.html">Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operational_notes.html">Operational Notes</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Grad Café Analytics</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">API Reference</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/api_reference.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="api-reference">
+<h1>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading"></a></h1>
+<p>Auto-generated from docstrings in <code class="docutils literal notranslate"><span class="pre">module_4/src/</span></code>.</p>
+<section id="module-app">
+<span id="flask-application-app-py"></span><h2>Flask Application (<code class="docutils literal notranslate"><span class="pre">app.py</span></code>)<a class="headerlink" href="#module-app" title="Link to this heading"></a></h2>
+<p>app.py — Flask web application for Grad Café SQL analysis.</p>
+<dl class="simple">
+<dt>Routes:</dt><dd><p>GET  /analysis        — main analysis page
+GET  /                — redirects to /analysis (backwards compat)
+POST /pull-data       — start background scrape + DB load
+GET  /pull-status     — JSON: is a scrape currently running?
+POST /update-analysis — refresh analysis (rejects if scrape running)</p>
+</dd>
+</dl>
+<p>Design note: create_app() is a <em>factory function</em> — it builds and returns a
+Flask app instead of creating one at module level. This lets tests call
+create_app({“TESTING”: True, “DATABASE_URL”: “…”}) to get a clean,
+isolated app pointed at a test database, without touching production state.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="app.create_app">
+<span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">create_app</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#create_app"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.create_app" title="Link to this definition"></a></dt>
+<dd><p>Application factory — build and return a configured Flask app.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>config</strong> (<em>dict</em><em> or </em><em>None</em>) – Optional dict of Flask config overrides. Tests use this to
+inject TESTING=True, DATABASE_URL, and a fake scraper callable
+so no real network or DB is touched.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A fully configured Flask application instance.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>flask.Flask</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-db">
+<span id="database-helper-db-py"></span><h2>Database Helper (<code class="docutils literal notranslate"><span class="pre">db.py</span></code>)<a class="headerlink" href="#module-db" title="Link to this heading"></a></h2>
+<p>db.py — shared database connection helper for module_4.</p>
+<p>Reads DATABASE_URL from the environment so that tests and CI can point at
+a throwaway database without touching this file.</p>
+<p>Expected format: postgresql://user:password&#64;host:port/dbname
+Homebrew default (no password, OS user): postgresql://localhost/gradcafe</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="db.get_conn">
+<span class="sig-prename descclassname"><span class="pre">db.</span></span><span class="sig-name descname"><span class="pre">get_conn</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">database_url</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/db.html#get_conn"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#db.get_conn" title="Link to this definition"></a></dt>
+<dd><p>Return an open psycopg connection.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>database_url</strong> (<em>str</em><em> or </em><em>None</em>) – Override the DATABASE_URL env var (used by tests).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>An open psycopg connection.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>psycopg.Connection</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-query_data">
+<span id="sql-queries-query-data-py"></span><h2>SQL Queries (<code class="docutils literal notranslate"><span class="pre">query_data.py</span></code>)<a class="headerlink" href="#module-query_data" title="Link to this heading"></a></h2>
+<p>query_data.py — SQL analysis of the Grad Café applicants table.</p>
+<p>Answers all required questions and two additional original questions.
+Run directly to print results to the console.</p>
+<dl class="simple">
+<dt>Usage:</dt><dd><p>python query_data.py</p>
+</dd>
+</dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="query_data.print_results">
+<span class="sig-prename descclassname"><span class="pre">query_data.</span></span><span class="sig-name descname"><span class="pre">print_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/query_data.html#print_results"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#query_data.print_results" title="Link to this definition"></a></dt>
+<dd><p>Print all query results to stdout in a readable format.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="query_data.run_queries">
+<span class="sig-prename descclassname"><span class="pre">query_data.</span></span><span class="sig-name descname"><span class="pre">run_queries</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">database_url</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/query_data.html#run_queries"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#query_data.run_queries" title="Link to this definition"></a></dt>
+<dd><p>Execute all analysis queries and return results as a dict.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>database_url</strong> (<em>str</em><em> or </em><em>None</em>) – Optional Postgres connection string. When None, db.py
+reads DATABASE_URL from the environment. Tests pass in
+the URL of a throwaway database so production data is
+never touched.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict of query results keyed by question name.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-load_data">
+<span id="data-loading-load-data-py"></span><h2>Data Loading (<code class="docutils literal notranslate"><span class="pre">load_data.py</span></code>)<a class="headerlink" href="#module-load_data" title="Link to this heading"></a></h2>
+<p>load_data.py — Create the applicants table and load Module 2 data into PostgreSQL.</p>
+<dl class="simple">
+<dt>Usage:</dt><dd><p>python load_data.py</p>
+</dd>
+</dl>
+<p>Reads:  ../module_2/llm_extend_applicant_data.json
+Writes: PostgreSQL table <cite>applicants</cite> in the <cite>gradcafe</cite> database</p>
+<p>Idempotent: uses INSERT … ON CONFLICT (url) DO NOTHING so re-running never
+creates duplicates (url is treated as the natural unique key for each entry).</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="load_data.load_data">
+<span class="sig-prename descclassname"><span class="pre">load_data.</span></span><span class="sig-name descname"><span class="pre">load_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'/Users/ryangogerty/jhu_software_concepts/module_4/src/../module_2/llm_extend_applicant_data.json'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">database_url</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/load_data.html#load_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#load_data.load_data" title="Link to this definition"></a></dt>
+<dd><p>Load JSON applicant data into PostgreSQL. Returns total row count after insert.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filepath</strong> (<em>str</em>) – Path to a JSON file containing a list of applicant dicts.</p></li>
+<li><p><strong>database_url</strong> (<em>str</em><em> or </em><em>None</em>) – Optional Postgres connection string. When None, db.py
+reads DATABASE_URL from the environment.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Total number of rows in the applicants table after loading.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-pull_and_load">
+<span id="scrape-load-orchestrator-pull-and-load-py"></span><h2>Scrape + Load Orchestrator (<code class="docutils literal notranslate"><span class="pre">pull_and_load.py</span></code>)<a class="headerlink" href="#module-pull_and_load" title="Link to this heading"></a></h2>
+<p>pull_and_load.py — Scrape new Grad Café entries and add them to the database.</p>
+<p>Called by app.py via subprocess when the user clicks “Pull Data”.
+Scrapes a fresh batch from Grad Café and inserts only new records
+(ON CONFLICT DO NOTHING skips duplicates).</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="pull_and_load.pull_and_load">
+<span class="sig-prename descclassname"><span class="pre">pull_and_load.</span></span><span class="sig-name descname"><span class="pre">pull_and_load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scrape_fn</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_fn</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_fn</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">database_url</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pull_and_load.html#pull_and_load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pull_and_load.pull_and_load" title="Link to this definition"></a></dt>
+<dd><p>Scrape new data and load it into the database.</p>
+<p>Parameters are injectable so that tests can pass fake implementations
+without importing selenium or hitting the network.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>scrape_fn</strong> (<em>callable</em><em> or </em><em>None</em>) – Callable matching scrape_data(max_entries=N) signature.
+Defaults to the real scrape_data from module_2.</p></li>
+<li><p><strong>save_fn</strong> (<em>callable</em><em> or </em><em>None</em>) – Callable matching save_data(records, filepath) signature.
+Defaults to the real save_data from module_2.</p></li>
+<li><p><strong>load_fn</strong> (<em>callable</em><em> or </em><em>None</em>) – Callable matching load_data(filepath, database_url) signature.
+Defaults to the real load_data from this package.</p></li>
+<li><p><strong>database_url</strong> (<em>str</em><em> or </em><em>None</em>) – Postgres connection string passed to load_fn.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="architecture.html" class="btn btn-neutral float-left" title="Architecture" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="testing_guide.html" class="btn btn-neutral float-right" title="Testing Guide" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Ryan Gogerty.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

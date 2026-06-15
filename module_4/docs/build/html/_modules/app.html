@@ -1,0 +1,284 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>app &mdash; Grad Café Analytics 4.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=9f5556dd"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Grad Café Analytics
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview &amp; Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing_guide.html">Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operational_notes.html">Operational Notes</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Grad Café Analytics</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">app</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for app</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">app.py — Flask web application for Grad Café SQL analysis.</span>
+
+<span class="sd">Routes:</span>
+<span class="sd">  GET  /analysis        — main analysis page</span>
+<span class="sd">  GET  /                — redirects to /analysis (backwards compat)</span>
+<span class="sd">  POST /pull-data       — start background scrape + DB load</span>
+<span class="sd">  GET  /pull-status     — JSON: is a scrape currently running?</span>
+<span class="sd">  POST /update-analysis — refresh analysis (rejects if scrape running)</span>
+
+<span class="sd">Design note: create_app() is a *factory function* — it builds and returns a</span>
+<span class="sd">Flask app instead of creating one at module level. This lets tests call</span>
+<span class="sd">create_app({&quot;TESTING&quot;: True, &quot;DATABASE_URL&quot;: &quot;...&quot;}) to get a clean,</span>
+<span class="sd">isolated app pointed at a test database, without touching production state.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">flask</span><span class="w"> </span><span class="kn">import</span> <span class="n">Flask</span><span class="p">,</span> <span class="n">jsonify</span><span class="p">,</span> <span class="n">redirect</span><span class="p">,</span> <span class="n">render_template</span><span class="p">,</span> <span class="n">url_for</span>
+
+
+<div class="viewcode-block" id="create_app">
+<a class="viewcode-back" href="../api_reference.html#app.create_app">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_app</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Application factory — build and return a configured Flask app.</span>
+
+<span class="sd">    :param config: Optional dict of Flask config overrides. Tests use this to</span>
+<span class="sd">                   inject TESTING=True, DATABASE_URL, and a fake scraper callable</span>
+<span class="sd">                   so no real network or DB is touched.</span>
+<span class="sd">    :type config: dict or None</span>
+<span class="sd">    :returns: A fully configured Flask application instance.</span>
+<span class="sd">    :rtype: flask.Flask</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># __name__ tells Flask where to find templates/ and static/ relative to</span>
+    <span class="c1"># this file. Since everything lives in src/, this still resolves correctly.</span>
+    <span class="n">app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+    <span class="c1"># ── Default config ───────────────────────────────────────────────────────</span>
+    <span class="c1"># DATABASE_URL: read from env so CI and tests can override without code edits.</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;DATABASE_URL&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+        <span class="s2">&quot;DATABASE_URL&quot;</span><span class="p">,</span> <span class="s2">&quot;postgresql://localhost/gradcafe&quot;</span>
+    <span class="p">)</span>
+    <span class="c1"># SCRAPER: the callable that pulls new data.</span>
+    <span class="c1"># Production default runs the real pull_and_load script.</span>
+    <span class="c1"># Tests swap this for a fast fake that returns canned rows instantly.</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;SCRAPER&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_default_scraper</span>
+
+    <span class="c1"># Apply any caller-supplied overrides last so they win.</span>
+    <span class="k">if</span> <span class="n">config</span><span class="p">:</span>
+        <span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+    <span class="c1"># ── Per-app scrape state ─────────────────────────────────────────────────</span>
+    <span class="c1"># Attached to the app object (not module globals) so each test&#39;s</span>
+    <span class="c1"># app instance starts with a completely clean slate.</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">_scrape_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">_scrape_running</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">_scrape_started_at</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1"># ── Routes ───────────────────────────────────────────────────────────────</span>
+
+    <span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/analysis&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">analysis</span><span class="p">():</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Render the main analysis page with fresh query results.</span>
+
+<span class="sd">        :returns: Rendered HTML page with analysis results.</span>
+<span class="sd">        :rtype: flask.Response</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Import inside the factory so that when tests override DATABASE_URL</span>
+        <span class="c1"># the import happens after config is set.</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">query_data</span><span class="w"> </span><span class="kn">import</span> <span class="n">run_queries</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="n">run_queries</span><span class="p">(</span><span class="n">database_url</span><span class="o">=</span><span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;DATABASE_URL&quot;</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span>
+            <span class="s2">&quot;index.html&quot;</span><span class="p">,</span>
+            <span class="n">results</span><span class="o">=</span><span class="n">results</span><span class="p">,</span>
+            <span class="n">scrape_running</span><span class="o">=</span><span class="n">app</span><span class="o">.</span><span class="n">_scrape_running</span><span class="p">,</span>
+            <span class="n">scrape_started</span><span class="o">=</span><span class="n">app</span><span class="o">.</span><span class="n">_scrape_started_at</span><span class="p">,</span>
+            <span class="n">now</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+        <span class="p">)</span>
+
+    <span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">root</span><span class="p">():</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Redirect bare root to /analysis for backwards compatibility.</span>
+
+<span class="sd">        :returns: Redirect response to /analysis.</span>
+<span class="sd">        :rtype: flask.Response</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">redirect</span><span class="p">(</span><span class="n">url_for</span><span class="p">(</span><span class="s2">&quot;analysis&quot;</span><span class="p">))</span>
+
+    <span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/pull-data&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">pull_data</span><span class="p">():</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Start a background scrape if one is not already running.</span>
+
+<span class="sd">        Returns 202 {&quot;ok&quot;: true} when the scrape is successfully started.</span>
+<span class="sd">        Returns 409 {&quot;busy&quot;: true} when a scrape is already running.</span>
+
+<span class="sd">        :returns: JSON status response.</span>
+<span class="sd">        :rtype: flask.Response</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="n">app</span><span class="o">.</span><span class="n">_scrape_lock</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">app</span><span class="o">.</span><span class="n">_scrape_running</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">jsonify</span><span class="p">({</span><span class="s2">&quot;busy&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}),</span> <span class="mi">409</span>
+            <span class="n">app</span><span class="o">.</span><span class="n">_scrape_running</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">app</span><span class="o">.</span><span class="n">_scrape_started_at</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_thread</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># Call the injectable scraper. In production this hits the web;</span>
+                <span class="c1"># in tests this is a fake that inserts canned rows instantly.</span>
+                <span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;SCRAPER&quot;</span><span class="p">](</span><span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;DATABASE_URL&quot;</span><span class="p">])</span>
+            <span class="k">finally</span><span class="p">:</span>
+                <span class="k">with</span> <span class="n">app</span><span class="o">.</span><span class="n">_scrape_lock</span><span class="p">:</span>
+                    <span class="n">app</span><span class="o">.</span><span class="n">_scrape_running</span> <span class="o">=</span> <span class="kc">False</span>
+                    <span class="n">app</span><span class="o">.</span><span class="n">_scrape_started_at</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">_thread</span><span class="p">,</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">jsonify</span><span class="p">({</span><span class="s2">&quot;ok&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}),</span> <span class="mi">202</span>
+
+    <span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/pull-status&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">pull_status</span><span class="p">():</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return JSON indicating whether a scrape is currently running.</span>
+
+<span class="sd">        :returns: JSON with &#39;running&#39; bool and optional &#39;started_at&#39; timestamp.</span>
+<span class="sd">        :rtype: flask.Response</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">jsonify</span><span class="p">({</span>
+            <span class="s2">&quot;running&quot;</span><span class="p">:</span> <span class="n">app</span><span class="o">.</span><span class="n">_scrape_running</span><span class="p">,</span>
+            <span class="s2">&quot;started_at&quot;</span><span class="p">:</span> <span class="p">(</span>
+                <span class="n">app</span><span class="o">.</span><span class="n">_scrape_started_at</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">app</span><span class="o">.</span><span class="n">_scrape_started_at</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="p">),</span>
+        <span class="p">})</span>
+
+    <span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/update-analysis&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_analysis</span><span class="p">():</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Redirect to /analysis to refresh results — blocked when busy.</span>
+
+<span class="sd">        Returns 409 {&quot;busy&quot;: true} if a pull is currently running.</span>
+<span class="sd">        Otherwise redirects to GET /analysis.</span>
+
+<span class="sd">        :returns: JSON error or redirect response.</span>
+<span class="sd">        :rtype: flask.Response</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">app</span><span class="o">.</span><span class="n">_scrape_running</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">jsonify</span><span class="p">({</span><span class="s2">&quot;busy&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}),</span> <span class="mi">409</span>
+        <span class="k">return</span> <span class="n">redirect</span><span class="p">(</span><span class="n">url_for</span><span class="p">(</span><span class="s2">&quot;analysis&quot;</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">app</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_default_scraper</span><span class="p">(</span><span class="n">database_url</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Production scraper: runs pull_and_load.py as a subprocess.</span>
+
+<span class="sd">    :param database_url: Postgres connection string passed to the subprocess.</span>
+<span class="sd">    :type database_url: str</span>
+<span class="sd">    :returns: None</span>
+<span class="sd">    :rtype: None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">script</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">),</span> <span class="s2">&quot;pull_and_load.py&quot;</span><span class="p">)</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">,</span> <span class="s2">&quot;DATABASE_URL&quot;</span><span class="p">:</span> <span class="n">database_url</span><span class="p">}</span>
+    <span class="n">proc</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span>
+        <span class="p">[</span><span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="p">,</span> <span class="n">script</span><span class="p">],</span>
+        <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+        <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">STDOUT</span><span class="p">,</span>
+        <span class="n">env</span><span class="o">=</span><span class="n">env</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">proc</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+
+
+<span class="c1"># ── Dev server entry point ────────────────────────────────────────────────────</span>
+<span class="c1"># Only runs when you do `python app.py` directly.</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>  <span class="c1"># pragma: no cover</span>
+    <span class="n">create_app</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">debug</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">5000</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Ryan Gogerty.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
