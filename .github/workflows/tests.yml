@@ -1,0 +1,85 @@
+# .github/workflows/tests.yml
+#
+# CI pipeline for JHU Module 4 — Grad Café Analytics
+#
+# Triggers: every push and pull request to main.
+# What it does:
+#   1. Spins up a PostgreSQL service container (same version as local dev)
+#   2. Creates the `gradcafe_test` database
+#   3. Installs Python dependencies from module_4/requirements.txt
+#   4. Runs the full pytest suite with coverage enforcement (--cov-fail-under=100)
+#
+# Why a service container for Postgres?
+#   GitHub Actions runners don't have Postgres installed by default.
+#   The `services:` block tells Actions to pull the postgres Docker image and
+#   start it before the job steps run. The health check waits until Postgres
+#   is actually accepting connections before the tests begin, avoiding
+#   "connection refused" errors on slow starts.
+
+name: Pytest + Coverage
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # ── Postgres service container ──────────────────────────────────────────
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          # These are the credentials for the service container's Postgres.
+          # They are NOT secrets — this is a throwaway CI database.
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: gradcafe_test
+        ports:
+          # Map container port 5432 to host port 5432 so psycopg can reach it
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    # ── Environment variables for the test run ──────────────────────────────
+    env:
+      # This is the connection string our tests (and the app) will use.
+      # Format: postgresql://user:password@host:port/dbname
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gradcafe_test
+
+    steps:
+      # Step 1: Check out the repository code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Set up the Python version that matches local dev
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Step 3: Install dependencies from module_4/requirements.txt
+      # We install into the runner's Python environment (no venv needed in CI).
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r module_4/requirements.txt
+
+      # Step 4: Run the full test suite.
+      # pytest reads pytest.ini (which sets --cov-fail-under=100) so the job
+      # fails automatically if coverage drops below 100%.
+      # We run from the module_4/ directory so relative imports in src/ resolve.
+      - name: Run pytest with coverage
+        working-directory: module_4
+        run: |
+          pytest tests/ \
+            --cov=src \
+            --cov-report=term-missing \
+            --cov-fail-under=100 \
+            -v
