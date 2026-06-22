@@ -336,3 +336,42 @@ def test_default_scraper_calls_subprocess(tmp_path):
     assert kwargs["env"]["DATABASE_URL"] == "postgresql://localhost/gradcafe_test"
     # Verify .wait() was called (we waited for the subprocess to finish)
     mock_proc.wait.assert_called_once()
+
+
+# ── db._build_url ─────────────────────────────────────────────────────────────
+
+@pytest.mark.db
+def test_build_url_from_individual_env_vars(monkeypatch):
+    """_build_url should assemble a PostgreSQL URL from the DB_* env vars.
+
+    pytest's ``monkeypatch`` fixture temporarily sets environment variables
+    for the duration of this test and restores the original environment
+    afterwards.  This lets us test the individual-var code path without
+    affecting other tests that rely on DATABASE_URL.
+    """
+    from db import _build_url
+
+    monkeypatch.setenv("DB_USER", "testuser")
+    monkeypatch.setenv("DB_PASSWORD", "testpass")
+    monkeypatch.setenv("DB_HOST", "db.example.com")
+    monkeypatch.setenv("DB_PORT", "5433")
+    monkeypatch.setenv("DB_NAME", "testdb")
+
+    url = _build_url()
+    assert url == "postgresql://testuser:testpass@db.example.com:5433/testdb"
+
+
+@pytest.mark.db
+def test_build_url_defaults_host_and_port(monkeypatch):
+    """_build_url should default DB_HOST to localhost and DB_PORT to 5432."""
+    from db import _build_url
+
+    monkeypatch.setenv("DB_USER", "u")
+    monkeypatch.setenv("DB_PASSWORD", "p")
+    monkeypatch.setenv("DB_NAME", "mydb")
+    monkeypatch.delenv("DB_HOST", raising=False)
+    monkeypatch.delenv("DB_PORT", raising=False)
+
+    url = _build_url()
+    assert "localhost" in url
+    assert "5432" in url

@@ -12,6 +12,11 @@ Design note: create_app() is a *factory function* — it builds and returns a
 Flask app instead of creating one at module level. This lets tests call
 create_app({"TESTING": True, "DATABASE_URL": "..."}) to get a clean,
 isolated app pointed at a test database, without touching production state.
+
+Database credentials are read from individual environment variables
+(DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME) via db._build_url().
+The legacy DATABASE_URL single-string env var is still accepted as an
+override for local development and CI compatibility.
 """
 
 import os
@@ -21,6 +26,8 @@ import threading
 from datetime import datetime
 
 from flask import Flask, jsonify, redirect, render_template, url_for
+
+from db import _build_url
 
 
 def create_app(config: dict | None = None):
@@ -39,9 +46,10 @@ def create_app(config: dict | None = None):
     app = Flask(__name__)
 
     # ── Default config ───────────────────────────────────────────────────────
-    # DATABASE_URL: read from env so CI and tests can override without code edits.
-    app.config["DATABASE_URL"] = os.environ.get(
-        "DATABASE_URL", "postgresql://localhost/gradcafe"
+    # DATABASE_URL: prefer the explicit single-URL env var (legacy / CI path);
+    # otherwise assemble the URL from the individual DB_* env vars.
+    app.config["DATABASE_URL"] = (
+        os.environ.get("DATABASE_URL") or _build_url()
     )
     # SCRAPER: the callable that pulls new data.
     # Production default runs the real pull_and_load script.
