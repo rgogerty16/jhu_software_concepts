@@ -90,14 +90,15 @@ def _parse_date(raw: str | None):
     return None
 
 
-def _to_row(entry: dict, idx: int) -> dict:
-    """Map one JSON entry to a parameter dict for INSERT_SQL.
+def _to_row(entry: dict, _idx: int) -> dict:
+    """Map one JSON entry to a parameter dict for the INSERT statement.
 
     :param entry: A single applicant record from the module_2 JSON output.
     :type entry: dict
-    :param idx: Index of the entry in the source list (unused; kept for callers).
-    :type idx: int
-    :returns: Dict with keys matching the INSERT_SQL parameter names.
+    :param _idx: Index of the entry in the source list (accepted for API
+        consistency but not used internally).
+    :type _idx: int
+    :returns: Dict with keys matching the INSERT statement parameter names.
     :rtype: dict
     """
     semester = entry.get("semester") or ""
@@ -138,7 +139,7 @@ def load_data(filepath: str = DATA_FILE, database_url: str | None = None) -> int
         records = json.load(f)
     print(f"  {len(records):,} records read")
 
-    rows = [_to_row(r, i) for i, r in enumerate(records)]
+    rows = [_to_row(record, i) for i, record in enumerate(records)]
 
     with get_conn(database_url) as conn:
         with conn.cursor() as cur:
@@ -150,10 +151,10 @@ def load_data(filepath: str = DATA_FILE, database_url: str | None = None) -> int
             total = cur.fetchone()[0]
 
     print(f"  Table now contains {total:,} rows")
-    print(f"  (ON CONFLICT DO NOTHING skips any duplicate URLs)")
+    print("  (ON CONFLICT DO NOTHING skips any duplicate URLs)")
     return total
 
 
 if __name__ == "__main__":  # pragma: no cover
-    total = load_data()
-    print(f"\nDone — {total:,} rows in applicants table.")
+    _total = load_data()
+    print(f"\nDone — {_total:,} rows in applicants table.")

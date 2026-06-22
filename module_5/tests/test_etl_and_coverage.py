@@ -318,9 +318,13 @@ def test_default_scraper_calls_subprocess(tmp_path):
     from app import _default_scraper
 
     # MagicMock.return_value is what Popen() returns — i.e. the process object.
-    # We give it a .wait() method that does nothing so the code doesn't hang.
+    # _default_scraper uses Popen as a context manager, so Python calls
+    # proc.__enter__() to get the object bound to `as proc`.  We wire
+    # __enter__ to return mock_proc itself so proc.wait() is our mock.
     mock_proc = MagicMock()
     mock_proc.wait.return_value = 0
+    mock_proc.__enter__ = MagicMock(return_value=mock_proc)
+    mock_proc.__exit__ = MagicMock(return_value=False)
 
     with patch("app.subprocess.Popen", return_value=mock_proc) as mock_popen:
         _default_scraper("postgresql://localhost/gradcafe_test")

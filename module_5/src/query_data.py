@@ -342,7 +342,7 @@ def print_results(r: dict) -> None:
 
     print(f"\nQ1  Fall 2026 entries:                    {r['q1_fall_2026_count']:,}")
     print(f"Q2  International student %:               {r['q2_pct_international']:.2f}%")
-    print(f"\nQ3  Average metrics (among reporters):")
+    print("\nQ3  Average metrics (among reporters):")
     print(f"      GPA:    {r['q3_avg_gpa']}")
     print(f"      GRE:    {r['q3_avg_gre']}")
     print(f"      GRE V:  {r['q3_avg_gre_v']}")
@@ -367,5 +367,5 @@ def print_results(r: dict) -> None:
 
 
 if __name__ == "__main__":  # pragma: no cover
-    results = run_queries()
-    print_results(results)
+    _results = run_queries()
+    print_results(_results)

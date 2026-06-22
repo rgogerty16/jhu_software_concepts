@@ -35,9 +35,13 @@ def pull_and_load(scrape_fn=None, save_fn=None, load_fn=None, database_url=None)
     :rtype: None
     """
     # Lazy-import the real implementations only when not injected.
-    # This keeps the module importable in tests even if module_2 isn't on the path.
+    # These imports are deliberately deferred: scrape requires selenium
+    # (not available in the test environment), and placing them at the
+    # top of the module would break the import in any environment that
+    # lacks module_2 on the Python path.
     if scrape_fn is None or save_fn is None:  # pragma: no cover
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../module_2"))
+        # pylint: disable=import-error,import-outside-toplevel
         from scrape import scrape_data, save_data
         if scrape_fn is None:
             scrape_fn = scrape_data
@@ -45,7 +49,7 @@ def pull_and_load(scrape_fn=None, save_fn=None, load_fn=None, database_url=None)
             save_fn = save_data
 
     if load_fn is None:
-        from load_data import load_data
+        from load_data import load_data  # pylint: disable=import-outside-toplevel
         load_fn = load_data
 
     print("[pull_and_load] Starting fresh scrape batch ...")
