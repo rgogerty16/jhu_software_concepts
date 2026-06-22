@@ -1,26 +1,39 @@
 """
 load_data.py — Create the applicants table and load Module 2 data into PostgreSQL.
 
-Usage:
+SQL Injection Defence
+---------------------
+All SQL statements are constructed with ``psycopg.sql.SQL`` objects so that:
+
+* Table and column names are safely quoted via ``sql.Identifier``.
+* Row values are bound through ``%s`` / ``%(name)s`` parameter placeholders
+  passed to ``cur.execute`` / ``cur.executemany`` — never interpolated into
+  the SQL text directly.
+
+Idempotent: uses ``INSERT ... ON CONFLICT (url) DO NOTHING`` so re-running
+never creates duplicates (url is the natural unique key for each entry).
+
+Usage::
+
     python load_data.py
-
-Reads:  ../module_2/llm_extend_applicant_data.json
-Writes: PostgreSQL table `applicants` in the `gradcafe` database
-
-Idempotent: uses INSERT ... ON CONFLICT (url) DO NOTHING so re-running never
-creates duplicates (url is treated as the natural unique key for each entry).
 """
 
 import json
 import os
 from datetime import datetime
 
+from psycopg import sql
+
 from db import get_conn
 
-DATA_FILE = os.path.join(os.path.dirname(__file__), "../module_2/llm_extend_applicant_data.json")
+DATA_FILE = os.path.join(
+    os.path.dirname(__file__), "../module_2/llm_extend_applicant_data.json"
+)
 
-CREATE_TABLE_SQL = """
-CREATE TABLE IF NOT EXISTS applicants (
+# sql.SQL objects are constructed once at module load — they are reused on
+# every call to load_data() without re-parsing the SQL text.
+_CREATE_TABLE_STMT = sql.SQL("""
+CREATE TABLE IF NOT EXISTS {tbl} (
     p_id                  SERIAL PRIMARY KEY,
     program               TEXT,
     comments              TEXT,
@@ -36,11 +49,11 @@ CREATE TABLE IF NOT EXISTS applicants (
     degree                TEXT,
     llm_generated_program      TEXT,
     llm_generated_university   TEXT
-);
-"""
+)
+""").format(tbl=sql.Identifier("applicants"))
 
-INSERT_SQL = """
-INSERT INTO applicants
+_INSERT_STMT = sql.SQL("""
+INSERT INTO {tbl}
     (program, comments, date_added, url, status, term,
      us_or_international, gpa, gre, gre_v, gre_aw, degree,
      llm_generated_program, llm_generated_university)
@@ -48,8 +61,15 @@ VALUES
     (%(program)s, %(comments)s, %(date_added)s, %(url)s, %(status)s, %(term)s,
      %(us_or_international)s, %(gpa)s, %(gre)s, %(gre_v)s, %(gre_aw)s, %(degree)s,
      %(llm_generated_program)s, %(llm_generated_university)s)
-ON CONFLICT (url) DO NOTHING;
-"""
+ON CONFLICT (url) DO NOTHING
+""").format(tbl=sql.Identifier("applicants"))
+
+_COUNT_STMT = sql.SQL(
+    "SELECT COUNT(*) FROM {tbl} LIMIT {lim}"
+).format(
+    tbl=sql.Identifier("applicants"),
+    lim=sql.Literal(1),
+)
 
 
 def _parse_date(raw: str | None):
@@ -122,9 +142,11 @@ def load_data(filepath: str = DATA_FILE, database_url: str | None = None) -> int
 
     with get_conn(database_url) as conn:
         with conn.cursor() as cur:
-            cur.execute(CREATE_TABLE_SQL)
-            cur.executemany(INSERT_SQL, rows)
-            cur.execute("SELECT COUNT(*) FROM applicants;")
+            # Statement construction is done at module level (_CREATE_TABLE_STMT,
+            # _INSERT_STMT, _COUNT_STMT).  Here we only execute them with data.
+            cur.execute(_CREATE_TABLE_STMT)
+            cur.executemany(_INSERT_STMT, rows)
+            cur.execute(_COUNT_STMT)
             total = cur.fetchone()[0]
 
     print(f"  Table now contains {total:,} rows")
