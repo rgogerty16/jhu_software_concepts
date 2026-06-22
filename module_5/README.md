@@ -1,163 +1,194 @@
-# Module 4: Testing & Documentation — Grad Café Analytics
+# Module 5 — Software Assurance & Secure SQL
 
 **Name:** Ryan Gogerty  
 **JHED ID:** rgogerty  
 **Course:** Modern Concepts in Python  
-**Assignment:** Module 4 — pytest, pytest-cov, Sphinx, Read the Docs
+**Assignment:** Module 5 — Pylint, SQL Injection Defenses, pydeps, Snyk, uv
 
 ---
 
-## Overview
+## What Changed from Module 4
 
-This module adds a complete pytest test suite (41 tests, 100% branch coverage) and
-Sphinx developer documentation to the Grad Café Analytics Flask application built
-in Modules 2–3. CI runs on every push via GitHub Actions.
+| Topic | Module 4 | Module 5 |
+|-------|----------|----------|
+| Pylint | not enforced | 10/10 required |
+| SQL queries | raw string building | `psycopg sql.SQL` composition |
+| DB credentials | single `DATABASE_URL` | individual `DB_*` env vars |
+| LIMIT | only on Q10 | every query |
+| Packaging | none | `setup.py` + editable install |
+| Supply-chain scan | none | Snyk |
+| CI | pytest only | pylint + pydeps + Snyk + pytest |
 
 ---
 
-## Quick Start
+## Fresh Install
 
-### Prerequisites
-
-- Python 3.12+
-- PostgreSQL 17 (`brew install postgresql@17`)
-- Chrome (for the Selenium scraper; not needed to run tests)
-
-### 1. Start PostgreSQL and create databases
+### pip + venv (standard)
 
 ```bash
-brew services start postgresql@17
-psql -c "CREATE DATABASE gradcafe;" postgres
-psql -c "CREATE DATABASE gradcafe_test;" postgres
+cd module_5
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pip install -e .          # editable install — makes src/ importable anywhere
 ```
 
-### 2. Install dependencies
+### uv (faster, lock-file reproducible)
 
 ```bash
-pip install -r module_4/requirements.txt
+cd module_5
+pip install uv            # install uv if not already present
+uv venv                   # creates .venv using uv's faster resolver
+source .venv/bin/activate
+uv pip sync requirements.txt   # installs exactly the pinned versions
+uv pip install -e .            # editable install
 ```
 
-### 3. Load Module 2 data
+`uv pip sync` is stricter than `pip install` — it removes packages that are
+NOT in requirements.txt, giving you a perfectly clean, reproducible environment
+every time.
+
+---
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and fill in your values.  **Never commit `.env`.**
 
 ```bash
-cd module_4/src
-python load_data.py
+# Option A — individual vars (recommended for production)
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=gradcafe
+DB_USER=gradcafe_app
+DB_PASSWORD=changeme
+
+# Option B — single URL (takes precedence if set)
+DATABASE_URL=postgresql://gradcafe_app:changeme@localhost:5432/gradcafe
 ```
 
-### 4. Run the Flask app
+### Least-Privilege Database User
+
+The app is read-only after initial data load.  Create a restricted user:
+
+```sql
+CREATE USER gradcafe_app WITH PASSWORD 'changeme';
+GRANT CONNECT ON DATABASE gradcafe TO gradcafe_app;
+GRANT SELECT ON TABLE applicants TO gradcafe_app;
+-- No INSERT, UPDATE, DELETE, DROP, or ALTER privileges
+```
+
+---
+
+## Running the App
 
 ```bash
-python app.py
+cd module_5/src
+DATABASE_URL=postgresql://localhost/gradcafe python app.py
 ```
 
-Visit `http://127.0.0.1:5000`. The app redirects `/` → `/analysis`.
+Visit `http://127.0.0.1:5000`.
 
 ---
 
 ## Running Tests
 
+Create the test database once:
+
 ```bash
-cd module_4
+psql -c "CREATE DATABASE gradcafe_test;" postgres
+```
+
+Run the full suite:
+
+```bash
+cd module_5
 DATABASE_URL=postgresql://localhost/gradcafe_test pytest tests/
 ```
 
-This runs all 41 tests with 100% coverage enforcement. By marker:
+By marker:
 
 ```bash
-pytest -m web           # Flask app factory + page rendering
-pytest -m buttons       # /pull-data, /update-analysis, /pull-status endpoints
-pytest -m analysis      # Answer: labels, two-decimal percentages
-pytest -m db            # Schema, inserts, idempotency, SQL query contract
-pytest -m integration   # End-to-end pull → update → render flows
+pytest -m web
+pytest -m "buttons or analysis"
+pytest -m db
+pytest -m integration
 ```
-
-> CI output: `175 stmts, 0 missed, 100%`
 
 ---
 
-## Documentation
+## Pylint
 
-Full developer docs are published on Read the Docs:
-
-**https://rgogerty16-jhu-software-concepts.readthedocs.io/en/latest/**
-
-Covers setup, three-tier architecture, API reference (auto-generated from docstrings),
-testing guide, and operational notes.
-
-To build the docs locally:
+Run from `module_5/` (the `.pylintrc` is here):
 
 ```bash
-cd module_4/docs
-make html
-open build/html/index.html
+pylint src/ --rcfile=.pylintrc --fail-under=10
 ```
+
+Expected output: `Your code has been rated at 10.00/10`
+
+No messages are silenced — every point is earned.
+
+---
+
+## Dependency Graph
+
+Generate the SVG (requires Graphviz `dot` on PATH):
+
+```bash
+pip install pydeps
+pydeps src/app.py --noshow -T svg -o dependency.svg
+```
+
+The committed `dependency.svg` shows the full module dependency chain.
+
+---
+
+## Snyk Security Scan
+
+```bash
+npm install -g snyk
+snyk auth
+cd module_5
+snyk test
+```
+
+See `snyk-analysis.png` for the screenshot of the scan results.
+
+---
+
+## GitHub Actions CI
+
+Workflow: `.github/workflows/ci.yml`  
+Triggers on every push or PR that touches `module_5/`.
+
+Four jobs run in parallel:
+1. **lint** — `pylint src/ --fail-under=10`
+2. **dependency-graph** — regenerates `dependency.svg`, fails if missing
+3. **snyk** — `snyk test` (advisory findings reported, does not block merge)
+4. **test** — `pytest --cov=src --cov-fail-under=100`
 
 ---
 
 ## Project Structure
 
 ```
-module_4/
+module_5/
 ├── src/
-│   ├── app.py              # Flask app factory (create_app), routes, _default_scraper
-│   ├── db.py               # psycopg connection helper
-│   ├── query_data.py       # SQL analysis queries → dict
+│   ├── app.py              # Flask app factory, routes, _default_scraper
+│   ├── db.py               # psycopg connection helper (individual env vars)
+│   ├── query_data.py       # 11 SQL queries via psycopg sql.SQL composition
 │   ├── load_data.py        # JSON → PostgreSQL loader (idempotent)
-│   ├── pull_and_load.py    # ETL orchestrator (injectable scrape/save/load fns)
+│   ├── pull_and_load.py    # ETL orchestrator (injectable scrape/save/load)
 │   └── templates/
-│       ├── base.html       # Buttons (data-testid), JS polling
-│       └── index.html      # Analysis results with Answer: labels
 ├── tests/
-│   ├── conftest.py                    # Fixtures: db_url, clean_db, fake_scraper, app_client
-│   ├── test_flask_page.py             # 12 web tests
-│   ├── test_buttons.py                # 6 button/endpoint tests
-│   ├── test_analysis_format.py        # 4 formatting tests
-│   ├── test_db_insert.py              # 5 database tests
-│   ├── test_integration_end_to_end.py # 4 integration tests
-│   └── test_etl_and_coverage.py       # 10 ETL + coverage tests
-├── docs/
-│   └── source/
-│       ├── conf.py              # Sphinx config (autodoc, napoleon, rtd theme)
-│       ├── index.rst            # Table of contents
-│       ├── overview.rst         # Setup and prerequisites
-│       ├── architecture.rst     # Three-tier diagram, routes, schema
-│       ├── api_reference.rst    # automodule directives for all 5 src/ modules
-│       ├── testing_guide.rst    # Markers, fixtures, test doubles, troubleshooting
-│       └── operational_notes.rst # Busy-state policy, idempotency, ops runbook
-├── pytest.ini
+├── .github/workflows/ci.yml
+├── dependency.svg
+├── snyk-analysis.png
+├── setup.py
 ├── requirements.txt
-├── coverage_summary.txt
+├── .pylintrc
+├── .env.example
+├── pytest.ini
+├── module_5_report.pdf
 └── README.md
 ```
-
----
-
-## Key Design Decisions
-
-### create_app() factory pattern
-The Flask app is wrapped in a function rather than created at module level. This
-lets tests inject a throwaway database URL and a fake scraper without ever touching
-the network or the production database.
-
-### Dependency injection for ETL
-`pull_and_load(scrape_fn, save_fn, load_fn)` accepts all three steps as parameters.
-Tests substitute instant in-process fakes, so the entire ETL pipeline is tested
-without Selenium or network access.
-
-### 100% coverage strategy
-Every `if __name__ == "__main__":` block is marked `# pragma: no cover` (CLI entry
-points, not business logic). The module_2 Selenium import block is also excluded
-(requires Chrome). All other logic is covered by the test suite.
-
-### data-testid selectors
-HTML buttons carry `data-testid` attributes so tests locate them by stable
-identifier, not by CSS class or display text that might change.
-
----
-
-## GitHub Actions (CI)
-
-Workflow: `.github/workflows/tests.yml`  
-Trigger: push / pull request to `main`  
-Service: `postgres:17` with `--health-cmd pg_isready`  
-Command: `pytest tests/ --cov=src --cov-report=term-missing --cov-fail-under=100`
