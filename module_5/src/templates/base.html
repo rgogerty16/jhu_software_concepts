@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Grad Café Analysis{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="header-inner">
+            <h1>🎓 Grad Café Data Analysis</h1>
+            <nav class="header-actions">
+                <!-- data-testid attributes give tests a stable hook to find these
+                     buttons. Class names and text can change; data-testid won't. -->
+                <button id="btn-pull"   class="btn btn-primary"   data-testid="pull-data-btn"        onclick="pullData()">Pull Data</button>
+                <button id="btn-update" class="btn btn-secondary" data-testid="update-analysis-btn"  onclick="updateAnalysis()">Update Analysis</button>
+            </nav>
+        </div>
+        <div id="status-bar" class="status-bar hidden"></div>
+    </header>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <p>Data sourced from <a href="https://www.thegradcafe.com" target="_blank">The Grad Café</a> · Ryan Gogerty · JHU Software Concepts Module 4</p>
+    </footer>
+
+    <script>
+    // Poll scrape status on page load so buttons reflect current state
+    (function checkOnLoad() {
+        fetch('/pull-status')
+            .then(r => r.json())
+            .then(data => {
+                if (data.running) setScrapeRunning(data.started_at);
+            });
+    })();
+
+    function setScrapeRunning(startedAt) {
+        document.getElementById('btn-pull').disabled = true;
+        document.getElementById('btn-update').disabled = true;
+        const bar = document.getElementById('status-bar');
+        bar.textContent = '⏳ Scraping new data from Grad Café' +
+            (startedAt ? ' (started ' + new Date(startedAt).toLocaleTimeString() + ')' : '') +
+            ' — this takes ~10 min. Update Analysis will be available when it finishes.';
+        bar.classList.remove('hidden');
+    }
+
+    function pullData() {
+        if (!confirm('Pull new data from Grad Café? This will scrape ~1,000 new entries and may take several minutes.')) return;
+        fetch('/pull-data', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.ok) {
+                    setScrapeRunning(null);
+                } else if (data.busy) {
+                    alert('A scrape is already running. Please wait for it to finish.');
+                }
+            });
+    }
+
+    function updateAnalysis() {
+        fetch('/update-analysis', { method: 'POST' })
+            .then(r => {
+                if (r.status === 409) {
+                    const bar = document.getElementById('status-bar');
+                    bar.textContent = '⚠️ Cannot update — a data pull is currently running. Please wait for it to finish.';
+                    bar.classList.remove('hidden');
+                    bar.classList.add('warning');
+                } else if (r.redirected) {
+                    window.location.href = r.url;
+                } else {
+                    window.location.reload();
+                }
+            });
+    }
+    </script>
+</body>
+</html>
