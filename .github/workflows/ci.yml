@@ -1,0 +1,154 @@
+# .github/workflows/ci.yml
+#
+# CI pipeline for JHU Module 5 — Software Assurance & Secure SQL
+#
+# Triggers on every push / pull request that touches module_5/.
+# Implements "shift-left security": lint, dependency-graph, supply-chain
+# scan, and tests all run automatically before code is trusted.
+#
+# Four independent jobs run in parallel:
+#   1. lint             — pylint src/ must score 10/10 (--fail-under=10)
+#   2. dependency-graph — pydeps regenerates dependency.svg, fails if missing
+#   3. snyk             — supply-chain scan of requirements.txt
+#   4. test             — pytest with 100% coverage against a Postgres service
+
+name: Module 5 CI
+
+on:
+  push:
+    paths:
+      - 'module_5/**'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    paths:
+      - 'module_5/**'
+      - '.github/workflows/ci.yml'
+
+jobs:
+  # ── Job 1: Pylint 10/10 ───────────────────────────────────────────────────
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies (app + pylint)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r module_5/requirements.txt
+
+      - name: Run Pylint (must be 10/10)
+        working-directory: module_5
+        run: |
+          pylint src/ --rcfile=.pylintrc --fail-under=10
+
+  # ── Job 2: Dependency graph ───────────────────────────────────────────────
+  dependency-graph:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # pydeps shells out to Graphviz's `dot` to render the SVG, so the
+      # system Graphviz package must be installed on the runner first.
+      - name: Install Graphviz
+        run: sudo apt-get update && sudo apt-get install -y graphviz
+
+      - name: Install pydeps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r module_5/requirements.txt
+
+      - name: Generate dependency.svg
+        working-directory: module_5
+        run: |
+          pydeps src/app.py --noshow -T svg -o dependency.svg
+
+      - name: Fail if dependency.svg was not produced
+        working-directory: module_5
+        run: |
+          test -f dependency.svg && echo "dependency.svg generated OK"
+
+  # ── Job 3: Snyk supply-chain scan ─────────────────────────────────────────
+  snyk:
+    runs-on: ubuntu-latest
+    # Advisory only: a newly-disclosed CVE should surface in the logs but not
+    # block the pipeline. Remove continue-on-error to make Snyk a hard gate.
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r module_5/requirements.txt
+
+      - name: Run Snyk dependency scan
+        uses: snyk/actions/python@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: test
+          args: --file=module_5/requirements.txt --package-manager=pip --skip-unresolved
+
+  # ── Job 4: Pytest + 100% coverage ─────────────────────────────────────────
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: gradcafe_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gradcafe_test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r module_5/requirements.txt
+
+      - name: Run pytest with coverage
+        working-directory: module_5
+        run: |
+          pytest tests/ \
+            --cov=src \
+            --cov-report=term-missing \
+            --cov-fail-under=100 \
+            -v
