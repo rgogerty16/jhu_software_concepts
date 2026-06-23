@@ -5,3 +5,5 @@ flask_run.log
 .env
 .venv/
 *.egg-info/
+.DS_Store
+.coverage
