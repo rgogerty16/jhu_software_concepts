@@ -118,6 +118,22 @@ SECTIONS = [
      "vulnerabilities - an XXE injection in lxml 5.3.0 (High) and a cache "
      "exposure in Flask 3.1.1 (Low) - by upgrading to lxml 6.1.0 and Flask 3.1.3, "
      "after which Snyk reported no vulnerable paths across 61 dependencies."),
+
+    ("7. Snyk Code (SAST) - Extra Credit",
+     "In addition to the dependency scan, Snyk Code static application security "
+     "testing was run with 'snyk code test src/'. The initial scan surfaced two "
+     "MEDIUM findings in first-party code. First, an Open Redirect in "
+     "templates/base.html: the update-analysis handler assigned the fetch "
+     "response URL directly to window.location, which a crafted redirect "
+     "response could abuse; this was fixed by navigating to the fixed, trusted "
+     "internal path '/analysis' instead of echoing the response URL. Second, "
+     "Debug Mode Enabled in app.py: the development server called run(debug=True), "
+     "which exposes the Werkzeug debugger if reachable by untrusted parties; this "
+     "was fixed by reading the debug flag from the FLASK_DEBUG environment "
+     "variable and defaulting it to off, so the application is secure by default "
+     "and debug must be explicitly opted into for local development. After both "
+     "remediations, a re-scan reported zero issues. Output evidence is saved in "
+     "snyk-code-analysis.txt."),
 ]
 
 

@@ -173,4 +173,7 @@ def _default_scraper(database_url: str) -> None:
 
 # ── Dev server entry point ─────────────────────────────────────────────────────
 if __name__ == "__main__":  # pragma: no cover
-    create_app().run(debug=True, port=5000)
+    # Debug mode is OFF by default (secure). Opt in for local dev only via
+    # FLASK_DEBUG=1 — never enable debug on an internet-facing deployment.
+    _debug = os.environ.get("FLASK_DEBUG", "").lower() in ("1", "true", "yes")
+    create_app().run(debug=_debug, port=5000)

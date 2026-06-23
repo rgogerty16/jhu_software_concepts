@@ -70,7 +70,9 @@
                     bar.classList.remove('hidden');
                     bar.classList.add('warning');
                 } else if (r.redirected) {
-                    window.location.href = r.url;
+                    // Navigate to a fixed, trusted internal path rather than
+                    // echoing the response URL back — prevents open-redirect.
+                    window.location.href = '/analysis';
                 } else {
                     window.location.reload();
                 }

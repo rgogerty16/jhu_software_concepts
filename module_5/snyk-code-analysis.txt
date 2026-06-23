@@ -1,0 +1,34 @@
+============================================================
+ Snyk Code (SAST) — Static Application Security Testing
+ Command: snyk code test src/
+============================================================
+
+----- INITIAL SCAN: 2 issues found -----
+
+ [MEDIUM] Open Redirect
+   Path: templates/base.html, line 73
+   Unsanitized response URL flowed into window.location (request redirection).
+
+ [MEDIUM] Debug Mode Enabled
+   Path: app.py, line 176
+   Flask run(debug=True) is a security risk if reachable by untrusted parties.
+
+----- REMEDIATION -----
+
+ 1. base.html: navigate to fixed internal path '/analysis' instead of r.url.
+ 2. app.py: debug now reads FLASK_DEBUG env var, defaulting to OFF (secure).
+
+----- RE-SCAN AFTER FIX -----
+
+│   Organization:      rgogerty16              │
+│   Test type:         Static code analysis    │
+│   Project path:      src/                    │
+│                                              │
+│   Total issues:   0                          │
+╰──────────────────────────────────────────────╯
+    
+💡 Tip
+
+   To view ignored issues, use the --include-ignores option.
+                                                            
+
