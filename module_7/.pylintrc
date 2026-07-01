@@ -2,7 +2,14 @@
 # Match the line length used across the course modules.
 max-line-length=100
 
+[BASIC]
+# The notebook filename is fixed by the assignment (grad-cafe-pipeline.ipynb),
+# which is kebab-case. Accept any module name so nbqa pylint does not flag the
+# hyphens; every other invalid-name check (variables, functions, constants)
+# stays fully active.
+module-naming-style=any
+
 [MESSAGES CONTROL]
-# No messages are silenced. s3_fetch.py earns 10.00/10 on its own, and the
+# No other messages are silenced. s3_fetch.py earns 10.00/10 on its own, and the
 # notebook (linted via `nbqa pylint`) opens each run with a module docstring so
-# it passes cleanly too. Kept explicit so the config's intent is obvious.
+# it passes cleanly too.
