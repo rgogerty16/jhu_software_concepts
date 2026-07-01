@@ -1,0 +1,98 @@
+# docker-compose.ec2.yml — the Module 6 stack, adapted to run on an EC2 host.
+#
+# Four services on Compose's default private network (they reach each other by
+# service name — `db`, `rabbitmq`):
+#
+#   db        PostgreSQL 16  — durable data (named volume), schema from init.sql
+#   rabbitmq  RabbitMQ 3.13  — message broker (management UI via SSH tunnel only)
+#   web       Flask          — UI + publisher, published on :8080
+#   worker    Python         — consumer + ETL, seeds data then processes tasks
+#
+# Differences vs. the Module 6 dev compose (module_6/docker-compose.yml):
+#   * web / worker PULL published Docker Hub images instead of building — the
+#     t3.micro never has to compile anything.
+#   * Postgres 5432 is NOT published to the host (internal network only).
+#   * RabbitMQ management (15672) is bound to 127.0.0.1 only, so it is reachable
+#     from an SSH tunnel but never from the public internet; AMQP 5672 is not
+#     published to the host at all.
+#   * applicant_data.json is scp'd to ./data on the host (kept out of git) and
+#     bind-mounted read-only; init.sql is scp'd next to this file.
+#   * All values come from --env-file .env (no secrets committed).
+#
+# Bring up:  docker compose -f docker-compose.ec2.yml --env-file .env up -d
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      # Named volume → data survives `docker compose down` and instance stop/start.
+      - pgdata:/var/lib/postgresql/data
+      # Schema bootstrap runs once, on first initialisation of the volume.
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    # Management UI bound to loopback ONLY — reach it with an SSH tunnel
+    # (ssh -L 15672:localhost:15672 ...), never exposed publicly. AMQP (5672)
+    # is not published to the host; web/worker reach it over the compose network.
+    ports:
+      - "127.0.0.1:15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  web:
+    image: rgogerty/module_6:web-v1
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      RABBITMQ_URL: ${RABBITMQ_URL}
+    ports:
+      # Public app port — lock this to your IP in the EC2 security group.
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  worker:
+    image: rgogerty/module_6:worker-v1
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      DATA_FILE: /data/applicant_data.json
+      INITIAL_LOAD_LIMIT: ${INITIAL_LOAD_LIMIT}
+      SCRAPE_BATCH: ${SCRAPE_BATCH}
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      # Read-only: the worker loads applicant_data.json but must never mutate it.
+      # scp the file into ~/app/data/ on the host BEFORE `up -d` (see EC2_DEPLOYMENT.md).
+      - ./data:/data:ro
+    restart: unless-stopped
+
+volumes:
+  pgdata:
