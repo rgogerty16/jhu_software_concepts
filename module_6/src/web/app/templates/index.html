@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Grad Café Analysis{% endblock %}
+
+{% block content %}
+<section class="intro">
+    {# "Analysis" appears in the heading — tests grep for this word to confirm render. #}
+    <h1 class="page-title">Analysis</h1>
+    <p>Analysis of <strong>{{ "{:,}".format(results.total_entries) }}</strong> graduate
+    school applicant entries. Live counts update the instant the worker commits a scrape.
+    Last rendered: <strong>{{ now.strftime("%B %d, %Y at %I:%M %p") }}</strong></p>
+</section>
+
+<!-- ── Cached summary (maintained by the worker's recompute_analytics task) ── -->
+<section class="panel cache-panel" data-testid="cache-panel">
+    <h2>Cached Summary <span class="note">(refreshed asynchronously by the worker)</span></h2>
+    {% if results.summary_updated %}
+        <p class="footnote">Last recomputed:
+            <strong>{{ results.summary_updated.strftime("%B %d, %Y at %I:%M:%S %p") }}</strong>
+            — click <em>Update Analysis</em> to enqueue a refresh.</p>
+    {% else %}
+        <p class="footnote">No cached analytics yet — click <em>Update Analysis</em> to build them.</p>
+    {% endif %}
+    {% set s = results.summary %}
+    <div class="card-grid">
+        <div class="card accent-blue">
+            <div class="card-label">Total Applicants (cached)</div>
+            <div class="card-value">Answer:
+                <span class="answer-value">{{ s.get('total_applicants')|round(0)|int
+                    if s.get('total_applicants') is not none else "—" }}</span></div>
+        </div>
+        <div class="card accent-purple">
+            <div class="card-label">Distinct Universities</div>
+            <div class="card-value">Answer:
+                <span class="answer-value">{{ s.get('distinct_universities')|round(0)|int
+                    if s.get('distinct_universities') is not none else "—" }}</span></div>
+        </div>
+        <div class="card accent-green">
+            <div class="card-label">Acceptance Rate (cached)</div>
+            <div class="card-value">Answer:
+                <span class="answer-value pct">{{ "%.2f"|format(s.get('pct_accepted'))
+                    if s.get('pct_accepted') is not none else "—" }}%</span></div>
+        </div>
+        <div class="card accent-orange">
+            <div class="card-label">Avg GPA (cached)</div>
+            <div class="card-value">Answer:
+                <span class="answer-value">{{ s.get('avg_gpa')
+                    if s.get('avg_gpa') is not none else "—" }}</span></div>
+        </div>
+    </div>
+</section>
+
+<!-- ── Live headline numbers ── -->
+<div class="card-grid">
+    <div class="card accent-blue">
+        <div class="card-label">Q1 — Fall 2026 Entries</div>
+        <div class="card-value">Answer: <span class="answer-value">{{ "{:,}".format(results.q1_fall_2026_count) }}</span></div>
+    </div>
+    <div class="card accent-purple">
+        <div class="card-label">Q2 — International Applicants</div>
+        <div class="card-value">Answer: <span class="answer-value pct">{{ "%.2f"|format(results.q2_pct_international) }}%</span></div>
+    </div>
+    <div class="card accent-green">
+        <div class="card-label">Q5 — Fall 2026 Acceptance Rate</div>
+        <div class="card-value">Answer: <span class="answer-value pct">{{ "%.2f"|format(results.q5_pct_accepted_fall2026) }}%</span></div>
+    </div>
+    <div class="card accent-orange">
+        <div class="card-label">Q3 — Avg GPA (reporters)</div>
+        <div class="card-value">Answer: <span class="answer-value">{{ results.q3_avg_gpa }}</span></div>
+    </div>
+</div>
+
+<!-- ── Q3: Score averages ── -->
+<section class="panel">
+    <h2>Q3 — Average Academic Metrics <span class="note">(among applicants who reported each)</span></h2>
+    <table>
+        <thead><tr><th>Metric</th><th>Answer</th></tr></thead>
+        <tbody>
+            <tr><td>GPA</td><td>Answer: <span class="answer-value">{{ results.q3_avg_gpa }}</span></td></tr>
+            <tr><td>GRE (quant / combined)</td><td>Answer: <span class="answer-value">{{ results.q3_avg_gre }}</span></td></tr>
+            <tr><td>GRE Verbal</td><td>Answer: <span class="answer-value">{{ results.q3_avg_gre_v }}</span></td></tr>
+            <tr><td>GRE Analytical Writing</td><td>Answer: <span class="answer-value">{{ results.q3_avg_gre_aw }}</span></td></tr>
+        </tbody>
+    </table>
+</section>
+
+<!-- ── Q10: Top programs by acceptance rate ── -->
+<section class="panel">
+    <h2>Q10 — Top Programs by Acceptance Rate <span class="note">(min 10 applicants)</span></h2>
+    <table>
+        <thead><tr><th>Program</th><th>Answer: Acceptance Rate</th><th>Accepted / Total</th></tr></thead>
+        <tbody>
+        {% for row in results.q10_top_acceptance_programs %}
+            <tr>
+                <td>{{ row.program }}</td>
+                <td>Answer: <span class="answer-value pct">{{ "%.1f"|format(row.rate_pct) }}%</span></td>
+                <td>{{ row.accepted }} / {{ row.total }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<!-- ── Q11: GPA by admission outcome ── -->
+<section class="panel">
+    <h2>Q11 — Average GPA by Admission Outcome <span class="note">(GPA reporters only)</span></h2>
+    <table>
+        <thead><tr><th>Outcome</th><th>Answer: Avg GPA</th><th>n</th></tr></thead>
+        <tbody>
+        {% for row in results.q11_gpa_by_status %}
+            <tr class="{{ 'row-accepted' if row.status == 'Accepted' else ('row-rejected' if row.status == 'Rejected' else '') }}">
+                <td>{{ row.status }}</td>
+                <td>Answer: <span class="answer-value">{{ row.avg_gpa }}</span></td>
+                <td>{{ "{:,}".format(row.n) }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

@@ -1,0 +1,13 @@
+[FORMAT]
+# Match the line length used across the course modules.
+max-line-length=100
+
+[MESSAGES CONTROL]
+# No messages are silenced globally — every point is earned. The only
+# suppressions are a handful of justified, inline `broad-exception-caught`
+# disables where a task handler / request endpoint must convert *any* failure
+# into a rollback+nack or an HTTP 503 (documented at each site).
+
+[DESIGN]
+# The Flask factory registers several small route closures; allow them.
+max-locals=20

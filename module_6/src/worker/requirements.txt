@@ -1,0 +1,3 @@
+# Worker service — RabbitMQ consumer + ETL (no Flask needed).
+psycopg[binary]==3.3.4
+pika==1.3.2

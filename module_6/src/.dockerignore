@@ -1,0 +1,5 @@
+# Keep the build context small and reproducible.
+# The data set is bind-mounted read-only at runtime, never baked into an image.
+data/
+**/__pycache__/
+**/*.pyc

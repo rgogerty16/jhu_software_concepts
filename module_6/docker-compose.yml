@@ -1,0 +1,90 @@
+# docker-compose.yml — the full Deploy-Anywhere stack.
+#
+# Four services on Compose's default private network (they reach each other by
+# service name — `db`, `rabbitmq`):
+#
+#   db        PostgreSQL 16  — durable data, schema auto-initialised from init.sql
+#   rabbitmq  RabbitMQ 3     — message broker (AMQP 5672, management UI 15672)
+#   web       Flask          — UI + publisher, published on localhost:8080
+#   worker    Python         — consumer + ETL, seeds data then processes tasks
+#
+# Bring it up on a clean machine with:  docker compose up --build
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: gradcafe
+      POSTGRES_PASSWORD: gradcafe
+      POSTGRES_DB: gradcafe
+    volumes:
+      # Named volume → Postgres data survives `docker compose down`.
+      - pgdata:/var/lib/postgresql/data
+      # Schema bootstrap runs once, on first initialisation of the volume.
+      - ./src/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gradcafe -d gradcafe"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"     # AMQP
+      - "15672:15672"   # management UI (guest/guest — dev only)
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: ./src
+      dockerfile: web/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://gradcafe:gradcafe@db:5432/gradcafe
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build:
+      context: ./src
+      dockerfile: worker/Dockerfile
+    # Auto-revive if the broker connection drops (e.g. a RabbitMQ restart):
+    # the consumer is a long-running blocking loop with no internal reconnect,
+    # so Docker restarting the process is the simplest durable recovery path.
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://gradcafe:gradcafe@db:5432/gradcafe
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      DATA_FILE: /data/applicant_data.json
+      # Seed a base slice on start-up; the remaining higher-id records are what
+      # the incremental scraper ingests on each "Pull Data" click.
+      INITIAL_LOAD_LIMIT: "25000"
+      SCRAPE_BATCH: "500"
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      # Read-only: the worker loads applicant_data.json but must never mutate it.
+      - ./src/data:/data:ro
+
+volumes:
+  pgdata:

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Grad Café Analysis{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="header-inner">
+            <h1>🎓 Grad Café Data Analysis</h1>
+            <nav class="header-actions">
+                <!-- Buttons publish a task to RabbitMQ and return immediately (HTTP 202).
+                     data-testid gives tests a stable hook independent of styling. -->
+                <button id="btn-pull" class="btn btn-primary"
+                        data-testid="pull-data-btn" onclick="enqueue('/pull-data', this)">
+                    Pull Data
+                </button>
+                <button id="btn-update" class="btn btn-secondary"
+                        data-testid="update-analysis-btn" onclick="enqueue('/update-analysis', this)">
+                    Update Analysis
+                </button>
+            </nav>
+        </div>
+        <div id="status-bar" class="status-bar hidden"></div>
+    </header>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <p>Data sourced from <a href="https://www.thegradcafe.com" target="_blank">The Grad Café</a>
+           · Ryan Gogerty · JHU Software Concepts Module 6 (Deploy Anywhere)</p>
+    </footer>
+
+    <script>
+    function showBanner(text, kind) {
+        const bar = document.getElementById('status-bar');
+        bar.textContent = text;
+        bar.classList.remove('hidden', 'warning', 'ok');
+        bar.classList.add(kind === 'error' ? 'warning' : 'ok');
+    }
+
+    // POST to an endpoint that enqueues a task. 202 => queued; anything else => error.
+    function enqueue(url, btn) {
+        btn.disabled = true;
+        fetch(url, { method: 'POST' })
+            .then(r => r.json().then(data => ({ status: r.status, data })))
+            .then(({ status, data }) => {
+                if (status === 202) {
+                    showBanner('✅ ' + data.message, 'ok');
+                } else {
+                    showBanner('⚠️ Could not queue task: ' + (data.error || 'unknown error'), 'error');
+                }
+            })
+            .catch(() => showBanner('⚠️ Network error while queuing task.', 'error'))
+            .finally(() => { btn.disabled = false; });
+    }
+    </script>
+</body>
+</html>
