@@ -1,0 +1,10 @@
+# Module 7 — S3 → SageMaker pipeline dependencies.
+#
+# Runtime: the notebook and s3_fetch.py need only boto3 (the AWS SDK for Python).
+# On the SageMaker notebook instance, run:  pip install -r requirements.txt
+boto3>=1.34
+
+# Development only — used to satisfy the Pylint 10.00/10 gate (not needed to run
+# the pipeline). `nbqa` runs pylint over the notebook.
+pylint>=3.0
+nbqa>=1.7

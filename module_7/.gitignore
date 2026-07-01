@@ -1,0 +1,19 @@
+# ── Secrets / credentials — NEVER commit ─────────────────────────────────────
+.env
+*.pem                 # EC2 SSH private keys
+credentials*.csv      # IAM "Create access key" download
+accessKeys*.csv
+*_accessKeys.csv
+
+# ── Large / generated data ───────────────────────────────────────────────────
+# The notebook downloads these on SageMaker; the worker gets its copy via scp.
+# They are 15–18 MB and are regenerated, so they stay out of git.
+applicant_data.json
+applicant_data_SM.json
+ec2/data/
+
+# ── Python / tooling noise ───────────────────────────────────────────────────
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/

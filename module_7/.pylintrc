@@ -1,0 +1,8 @@
+[FORMAT]
+# Match the line length used across the course modules.
+max-line-length=100
+
+[MESSAGES CONTROL]
+# No messages are silenced. s3_fetch.py earns 10.00/10 on its own, and the
+# notebook (linted via `nbqa pylint`) opens each run with a module docstring so
+# it passes cleanly too. Kept explicit so the config's intent is obvious.
