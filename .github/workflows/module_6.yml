@@ -1,0 +1,92 @@
+# .github/workflows/module_6.yml
+#
+# CI for JHU Module 6 — Deploy Anywhere.
+#
+# Two jobs, both scoped to changes under module_6/ so the Module 4/5 workflows
+# (tests.yml, ci.yml) are unaffected and do not interfere:
+#   1. lint  — pylint over src/ must score 10.00/10 (--fail-under=10)
+#   2. test  — pytest with 100% coverage against a Postgres service container
+
+name: Module 6 CI
+
+on:
+  push:
+    paths:
+      - 'module_6/**'
+      - '.github/workflows/module_6.yml'
+  pull_request:
+    paths:
+      - 'module_6/**'
+      - '.github/workflows/module_6.yml'
+
+jobs:
+  # ── Job 1: Pylint 10/10 ─────────────────────────────────────────────────────
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies (services + pylint)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r module_6/src/web/requirements.txt \
+                      -r module_6/src/worker/requirements.txt \
+                      pylint==3.3.7
+
+      - name: Run Pylint (must be 10/10)
+        working-directory: module_6
+        run: |
+          PYTHONPATH=src:src/web:src/worker pylint --rcfile=.pylintrc --fail-under=10 \
+            src/db/__init__.py src/db/db.py src/db/load_data.py \
+            src/web/run.py src/web/publisher.py \
+            src/web/app/__init__.py src/web/app/query_data.py \
+            src/worker/consumer.py src/worker/etl/__init__.py \
+            src/worker/etl/incremental_scraper.py src/worker/etl/query_data.py
+
+  # ── Job 2: Pytest + 100% coverage ───────────────────────────────────────────
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: gradcafe_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gradcafe_test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies (services + test tooling)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r module_6/src/web/requirements.txt \
+                      -r module_6/src/worker/requirements.txt \
+                      pytest==8.3.5 pytest-cov==6.1.0
+
+      - name: Run pytest with 100% coverage
+        working-directory: module_6
+        run: pytest
