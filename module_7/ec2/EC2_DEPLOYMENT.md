@@ -8,7 +8,12 @@ notes. Replace `<EC2_PUBLIC_IPV4>` and `key.pem` with your own values.
 
 ## 0. Instance + security group (AWS console)
 
-- **AMI:** Ubuntu Server 22.04 LTS  •  **Type:** `t3.micro`
+- **AMI:** Ubuntu Server 24.04 LTS **(64-bit Arm)**  •  **Type:** `t4g.micro`
+  > ⚠️ **Architecture matters.** The `web`/`worker` images on Docker Hub are built
+  > `arm64`, so the host must be **Arm (Graviton)** — a `t4g`/`t3g` instance **plus**
+  > the **Arm** build of the Ubuntu AMI. On an x86 host (`t3.micro`) the images will
+  > not pull (`no matching manifest for linux/amd64`). Alternatively, rebuild the
+  > images multi-arch: `docker buildx build --platform linux/amd64,linux/arm64 ... --push`.
 - **Key pair:** create/select one; download `key.pem` and `chmod 400 key.pem`
 - **Security group inbound rules** (least privilege):
 
@@ -31,9 +36,10 @@ Capture `ec2-instance.png` (instance running + public IPv4) and
 ```bash
 ssh -i key.pem ubuntu@<EC2_PUBLIC_IPV4>
 
-# Ubuntu 22.04
+# Ubuntu 24.04 (the compose plugin ships as `docker-compose-v2` in Ubuntu's repos,
+# NOT `docker-compose-plugin`, which lives only in Docker's own apt repo).
 sudo apt-get update
-sudo apt-get install -y docker.io docker-compose-plugin
+sudo apt-get install -y docker.io docker-compose-v2
 sudo usermod -aG docker $USER
 newgrp docker            # apply the docker group without logging out
 
@@ -146,6 +152,9 @@ while preserving the machine and its EBS volume.
   first boot while `init.sql` runs.
 - **Can't reach `:8080` in the browser** — confirm the security group allows 8080
   from *your current* IP (it changes on network switches).
+- **`no matching manifest for linux/amd64`** — you launched an **x86** instance but
+  the images are `arm64`-only. Relaunch as `t4g.micro` with the **Arm** Ubuntu AMI
+  (easiest), or rebuild the images multi-arch (see the buildx command below).
 - **`image not found` when pulling** — the images may not be published yet. Build
   and push them from `module_6/` first:
 

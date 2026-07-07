@@ -76,10 +76,12 @@ nbqa pylint grad-cafe-pipeline.ipynb --rcfile=.pylintrc
 
 Full runbook: **[`ec2/EC2_DEPLOYMENT.md`](ec2/EC2_DEPLOYMENT.md)**. In short:
 
-1. Launch **Ubuntu 22.04 `t3.micro`**; key pair for SSH; security group opens **22
-   and 8080 to your IP only** (5432 and 15672 stay private).
+1. Launch **Ubuntu 24.04 `t4g.micro`** — an **Arm (Graviton)** instance with the
+   **Arm** build of the AMI, because the `web`/`worker` images are `arm64` (an x86
+   `t3.micro` can't pull them). Key pair for SSH; security group opens **22 and 8080
+   to your IP only** (5432 and 15672 stay private).
 2. SSH in; install Docker + the Compose plugin
-   (`sudo apt-get install -y docker.io docker-compose-plugin`; add your user to the
+   (`sudo apt-get install -y docker.io docker-compose-v2`; add your user to the
    `docker` group); verify `docker --version` / `docker compose version`.
 3. `scp` `ec2/docker-compose.ec2.yml`, `ec2/init.sql`, your `.env`, and
    `module_6/src/data/applicant_data.json` (→ `~/app/data/`) up to the instance.

@@ -1,7 +1,11 @@
 # ── Secrets / credentials — NEVER commit ─────────────────────────────────────
+# NOTE: .gitignore does not support trailing inline comments — the comment text
+# becomes part of the pattern and silently breaks it. Keep comments on own lines.
 .env
-*.pem                 # EC2 SSH private keys
-credentials*.csv      # IAM "Create access key" download
+# EC2 SSH private keys
+*.pem
+# IAM "Create access key" downloads
+credentials*.csv
 accessKeys*.csv
 *_accessKeys.csv
 

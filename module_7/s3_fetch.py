@@ -16,7 +16,7 @@ import boto3
 
 # Defaults are overridable via environment variables (see ``.env.example``) so
 # the same code works whether the bucket is ``grad-cafe`` or ``grad-cafe-<init>``.
-DEFAULT_BUCKET = os.getenv("S3_BUCKET", "grad-cafe")
+DEFAULT_BUCKET = os.getenv("S3_BUCKET", "grad-cafe-rg")
 DEFAULT_KEY = os.getenv("S3_KEY", "applicant_data.json")
 DEFAULT_OUTPUT = os.getenv("OUTPUT_FILE", "applicant_data_SM.json")
 
