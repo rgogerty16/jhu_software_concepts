@@ -1,0 +1,9 @@
+# Module 8 — Grad Café data preparation & EDA.
+#
+# On the SageMaker notebook instance run:  pip install -r requirements.txt
+# (boto3 is usually preinstalled on SageMaker; it is pinned here for local runs.)
+boto3>=1.34
+pandas>=2.0
+numpy>=1.24
+scipy>=1.10
+matplotlib>=3.7
