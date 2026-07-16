@@ -1,4 +1,4 @@
-# What Gives an NFL Team the Edge — and How Has the Game Changed Since 1999?
+# Peak vs. Longevity: Is LeBron the GOAT? A Data Comparison with Michael Jordan
 
 - **Name:** Ryan Gogerty
 - **JHED:** rgogerty
@@ -7,21 +7,23 @@
 
 ## Research question & dataset
 
-**Leading question:** *What gives an NFL team the edge — and how has the game
-changed since 1999?* I break this into four sub-questions: does playing at home
-still matter (and what happened in the fan-less 2020 season)? which franchises
-win most? has scoring risen into an "offense era"? and are the best teams built
-on offense, defense, or both?
+**Leading question:** *Peak vs. Longevity — is LeBron James the GOAT? A data
+comparison with Michael Jordan.* The "greatest of all time" debate usually pits
+Jordan's dominance against LeBron's staying power, so I break the question into
+sub-questions: whose scoring **peak** was higher, who is the better **all-around**
+player, how does the **all-time scoring** chase actually unfold, and just how
+**outrageous** is LeBron's longevity?
 
-**Dataset:** the open-source **nflverse "games"** table
-([`nflverse/nfldata/data/games.csv`](https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv)) —
-one row per NFL game from **1999–2025** with the final score, home/away teams,
-venue, and betting lines. It is a public, no-login CSV, so it is fully
-reproducible; a snapshot is committed here as `nfl_games.csv`. It fits the
-question because a single file already carries scores, teams, and season/venue
-context, so team-, franchise-, and era-level statistics need no external joins.
-*(NFL is a custom topic outside the four suggested datasets, so this
-question + source was submitted to the instructors for approval per the brief.)*
+**Dataset:** season-by-season and team-roster tables from the public
+**[Basketball-Reference](https://www.basketball-reference.com)** database
+(`players/j/jamesle01.html`, `players/j/jordami01.html`, and each LeBron
+team-season roster page). These are committed here as three CSV snapshots
+(`lebron_seasons.csv`, `jordan_seasons.csv`, `lebron_teammates.csv`) so the
+dashboard runs with no live network calls. The source fits the question because
+it carries every player-season (points, age, per-game stats) plus roster
+birthdates — exactly what a peak-vs-longevity comparison needs. *(NBA is a
+custom topic outside the four suggested datasets, so this question + source was
+submitted to the instructors for approval per the brief.)*
 
 ## How to run
 
@@ -30,13 +32,13 @@ cd module_10
 python3.12 -m venv .venv          # Python 3.10+ required; developed on 3.12
 source .venv/bin/activate
 pip install -r requirements.txt
-python visualization.py           # writes the 3 PNGs + offense_vs_defense.html
+python visualization.py           # writes the 3 PNGs + scoring_chase.html
 python dashboard.py               # serves the dashboard at http://127.0.0.1:8050
 ```
 
-`visualization.py` reads the bundled `nfl_games.csv` (or downloads it once from
-nflverse if the file is missing) and prints a short console summary of the
-headline numbers used below, so nothing in this README is hand-typed.
+`visualization.py` reads the committed CSV snapshots and prints a console
+summary of every headline number used below, so nothing in this README is
+hand-typed.
 
 ## Dependencies
 
@@ -45,89 +47,84 @@ See `requirements.txt`: `pandas`, `numpy`, `matplotlib`, `seaborn`, `plotly`,
 
 ## Exploratory data analysis
 
-`visualization.py` runs the full pipeline: load the raw table; **drop the 272
-unplayed 2026 games** and coerce scores to numbers; **fold relocated franchises**
-into their current code (OAK→LV, SD→LAC, STL→LA) so each franchise is one entity;
-**reshape** every game into a one-row-per-team-per-game frame (each game yields a
-home row and an away row, with ties scored as half-wins); and restrict rate
-statistics to the **regular season** so win percentages are not skewed by uneven
-playoff appearances. This leaves **7,276 games** and **13,934 regular-season
-team-games** to aggregate by season, franchise, and decade.
+`visualization.py` loads each cleaned season table (dropping Jordan's four "Did
+Not Play" retirement rows), sorts by age, and computes **cumulative career
+points** and **games-weighted career per-game averages**. LeBron's 254 unique
+teammates are assembled from 23 team-season rosters, de-duplicated, and bucketed
+by **birth decade**. The cleaned data gives LeBron **43,440 points over 23
+seasons (26.8 PPG)** versus Jordan's **32,292 points over 15 seasons (30.1
+PPG)** — the numbers the visualizations build on.
 
 ## Visualizations
 
-### 1. Home-field advantage by season (Seaborn)
+### 1. Scoring by age (Seaborn)
 
-![Home-team win percentage by season, 1999–2025](home_advantage_by_season.png)
+![Points per game by age for LeBron and Jordan](scoring_by_age.png)
 
-Home teams win about **56% of regular-season games on average**, and every
-season from 1999–2019 sits above the 50% coin-flip line. The one clear
-exception is **2020 (49.8%)** — the COVID season played in empty or near-empty
-stadiums — when the home edge briefly disappeared before rebounding. This is
-consistent with (but not proof of) crowds contributing to home-field advantage.
+Jordan's red line peaks far higher — up to **37.1 PPG at age 23** — and stays in
+the low 30s through his 20s, the sharper prime. LeBron's purple line is lower at
+its peak (**31.4**) but extends all the way to **age 41**, years after Jordan's
+line ends at 39. This is the visual heart of "peak vs. longevity."
 
-### 2. Regular-season win % by franchise (Seaborn)
+### 2. Career per-game averages (Seaborn)
 
-![Regular-season win percentage by franchise](team_win_pct.png)
+![Career per-game averages: LeBron vs Jordan](career_fingerprint.png)
 
-The **Patriots** top the era at **66.8%**, trailed by the Steelers, Packers, and
-Ravens, while the Browns anchor the bottom. Bars are shaded by each franchise's
-**average point differential**: the darkest (winningest) teams are exactly those
-that outscore opponents by the most per game, so sustained scoring margin — not
-luck — separates the consistent winners.
+Jordan leads the pure-scoring categories — **PPG (30.1 vs 26.8)** and **steals
+(2.4 vs 1.5)** — while LeBron leads **rebounds (7.5 vs 6.2)** and **assists (7.4
+vs 5.3)**. The fingerprint frames the debate as *scorer vs. all-arounder* rather
+than one player being better at everything.
 
-### 3. Points scored per team per game by decade (Seaborn)
+### 3. LeBron's teammates span five birth decades (Seaborn)
 
-![Points scored per team per game by decade](points_per_game_by_decade.png)
+![LeBron's teammates by birth year, coloured by decade](teammate_birth_span.png)
 
-Median per-team scoring drifts upward across the three decades, and average
-**combined** points per game rise from **42.2 (1999–2009) to 45.7 (2020–2025)** —
-the modern offense-friendly era. In every decade the **home** boxes sit slightly
-above the **away** boxes, a second, distributional view of the home edge from
-chart 1.
+Each dot is one of LeBron's **254 career teammates**, placed by birth year and
+shaded light-to-dark by decade. They span **five decades**, from **Scott
+Williams (born 1968)** on the 2004-05 Cavaliers to **Bronny James (born 2004)** —
+his own son, and the first father-son duo in NBA history. Few careers are long
+enough to touch that many basketball generations.
 
-### 4. Team offense vs. defense by season (Plotly — interactive & animated)
+### 4. The scoring chase (Plotly — interactive & animated)
 
-Saved as **`offense_vs_defense.html`** (open it in any browser) and embedded live
-in the dashboard. Each dot is one team-season: **x = points scored per game**,
-**y = points allowed per game**, **colour = win %**, **size = games played**, and
-the **slider/play button animates through 1999–2025**. Dotted lines mark the
-league averages, splitting the field into quadrants; elite teams settle in the
-**lower-right** (score a lot, allow little) and drift toward dark, high-win-%
-colours — visually tying offense *and* defense back to winning.
+Saved as **`scoring_chase.html`** (open in a browser) and embedded live in the
+dashboard. Each player's **cumulative career points** grow by age as the
+animation plays; a dashed reference line marks **Kareem Abdul-Jabbar's 38,387**,
+the record LeBron passed on Feb 7, 2023. Jordan's line plateaus at 32,292 while
+LeBron's keeps climbing to 43,440 — accumulation as its own kind of greatness.
 
 ## Dashboard
 
-`dashboard.py` is a single-page Dash app whose title is the research question,
-with three sentences of guiding text and all four figures (the live Plotly chart
-plus the three PNGs). A screenshot of the running app is saved as
-`dashboard.png`:
+`dashboard.py` is a single-page Dash app: the research question as its title,
+three sentences of guiding text, a row of fun-fact tiles (23 seasons · all-time
+scoring leader · teammates across 5 decades · 4 U.S. presidents · ~37% of all
+NBA players), the live animated scoring chase, and the three Seaborn charts. A
+screenshot of the running app is saved as `dashboard.png`:
 
 ![Screenshot of the running Dash dashboard](dashboard.png)
 
 ## Conclusion
 
-The evidence points to one answer: **a team's edge comes mostly from a sustained
-scoring margin.** Win percentage tracks point differential almost perfectly
-across franchises (chart 2), and the offense-vs-defense view (chart 4) shows the
-best teams both scoring above and conceding below league average. **Home field is
-a real but smaller and more fragile edge** — worth roughly six points of win rate
-on average, yet it evaporated in the fan-less 2020 season (chart 1). Meanwhile
-the league has shifted modestly toward offense over 25 years (chart 3). These are
-**observational associations, not causal claims** — the 2020 dip in particular is
-confounded by pandemic travel and protocols, not just empty seats — but together
-they consistently favor teams that win the scoring-margin battle.
+The data reframes the GOAT debate instead of settling it. **Jordan owns the
+peak** — a higher scoring apex, the record 30.1 career PPG, and greater
+per-game efficiency in his prime. **LeBron owns longevity and accumulation** —
+the all-time scoring record, 23 seasons, more career rebounds and assists, and a
+teammate list spanning five birth decades. Which matters more is a value
+judgment, not a statistic, so this dashboard deliberately presents both cases
+rather than declaring a winner; the figures are descriptive comparisons, not a
+causal or definitive verdict.
 
 ## Outputs
 
 | File | Contents |
 | --- | --- |
-| `visualization.py` | All plot-generation + EDA code (pylint 10/10). |
+| `visualization.py` | All plot + EDA code (pylint 10/10). |
 | `dashboard.py` | Single-page Dash application (pylint 10/10). |
-| `nfl_games.csv` | Committed snapshot of the nflverse games dataset. |
-| `home_advantage_by_season.png` | Seaborn line chart — home win % by season. |
-| `team_win_pct.png` | Seaborn bar chart — franchise win %, shaded by point diff. |
-| `points_per_game_by_decade.png` | Seaborn box plot — scoring by decade, home vs away. |
-| `offense_vs_defense.html` | Interactive, animated Plotly scatter (offense vs defense). |
+| `lebron_seasons.csv`, `jordan_seasons.csv` | Committed season snapshots. |
+| `lebron_teammates.csv` | Committed teammate + birth-year snapshot. |
+| `scoring_by_age.png` | Seaborn line — PPG by age. |
+| `career_fingerprint.png` | Seaborn grouped bar — career per-game averages. |
+| `teammate_birth_span.png` | Seaborn strip plot — teammates across five decades. |
+| `scoring_chase.html` | Interactive, animated Plotly cumulative-points race. |
 | `dashboard.png` | Screenshot of the running dashboard. |
 | `requirements.txt` | Visualization/dashboard environment. |
