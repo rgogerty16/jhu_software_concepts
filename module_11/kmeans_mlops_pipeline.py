@@ -2,15 +2,16 @@
 
 Builds on the ported Module 9 clustering pipeline (TF-IDF -> PCA -> KMeans) by
 logging each training run to a local MLflow tracking server: the required
-clustering parameters and the model's ``inertia_`` metric.  Model logging /
-registry and an optional wandb backend are added in later commits.
+clustering parameters, the model's ``inertia_`` metric, and the trained model
+itself (registered as ``Clustering``).  An optional wandb backend is added in a
+later commit.
 
 Pipeline
 --------
 1. Load and clean the Grad Cafe program names.
 2. TF-IDF vectorise, then reduce with PCA.
 3. Fit KMeans with the required parameters.
-4. Log the parameters and the ``inertia_`` metric to MLflow.
+4. Log the parameters, the ``inertia_`` metric and the model to MLflow.
 
 Start the tracking server first, e.g.::
 
@@ -20,6 +21,7 @@ Start the tracking server first, e.g.::
 from pathlib import Path
 
 import mlflow
+import mlflow.sklearn
 import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
@@ -32,6 +34,7 @@ DATA_FILE = HERE / "applicant_data.json"
 TRACKING_URI = "http://127.0.0.1:8080"   # local MLflow server (localhost:8080)
 EXPERIMENT_NAME = "gradcafe-kmeans"
 RUN_NAME = "kmeans-gradcafe"
+MODEL_NAME = "Clustering"
 
 MAX_FEATURES = 1000        # TF-IDF vocabulary cap (matches Module 9)
 PCA_COMPONENTS = 80        # dense PCA components (matches Module 9's final run)
@@ -84,8 +87,8 @@ def build_features():
     return features
 
 
-def track_mlflow(model):
-    """Log the run, required parameters and the inertia metric to MLflow."""
+def track_mlflow(model, example):
+    """Log the run, parameters, inertia metric and registered model to MLflow."""
     # set_tracking_uri points the client at the server started with, e.g.:
     #   mlflow server --host 127.0.0.1 --port 8080 --backend-store-uri sqlite:///mlflow.db
     mlflow.set_tracking_uri(TRACKING_URI)
@@ -94,7 +97,14 @@ def track_mlflow(model):
         mlflow.log_params(PARAMS)
         # inertia_ is a model OUTPUT, so it is logged as a metric, not a param.
         mlflow.log_metric("inertia", float(model.inertia_))
-    print(f"MLflow: logged run to {TRACKING_URI} (experiment '{EXPERIMENT_NAME}')")
+        # Log + register the fitted model.  Registering (Clustering v1) needs a
+        # database-backed store, which is why the server uses the sqlite backend.
+        mlflow.sklearn.log_model(
+            model, name="model", input_example=example,
+            registered_model_name=MODEL_NAME,
+        )
+    print(f"MLflow: logged run to {TRACKING_URI} "
+          f"(experiment '{EXPERIMENT_NAME}', registered model '{MODEL_NAME}')")
 
 
 def main():
@@ -102,7 +112,9 @@ def main():
     features = build_features()
     model = train_kmeans(features)
     print(f"KMeans inertia: {model.inertia_:,.2f}")
-    track_mlflow(model)
+    # Pass a small feature sample as the input example so MLflow can infer the
+    # model signature (input shape) it stores alongside the model.
+    track_mlflow(model, features[:5])
 
 
 if __name__ == "__main__":
