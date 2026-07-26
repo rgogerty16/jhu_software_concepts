@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# MLflow / wandb runtime artifacts (not deliverables)
+mlflow.db
+mlruns/
+mlartifacts/
+wandb/
+*.joblib

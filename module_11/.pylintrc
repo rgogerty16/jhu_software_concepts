@@ -1,0 +1,6 @@
+[FORMAT]
+# Match the line length used in module 4 and recommended by the course.
+max-line-length=100
+
+[MESSAGES CONTROL]
+# No messages are silenced — every point is earned, not skipped.
