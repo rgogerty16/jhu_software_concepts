@@ -99,6 +99,10 @@ the trained model saved as a **wandb Artifact** named `Clustering`. Evidence:
 | `wandb_details.png` | The logged config parameters and the tracked `inertia`. |
 | `wandb_artifact.png` | The saved model artifact. |
 
+![wandb run](wandb_run.png)
+![wandb config and inertia metric](wandb_details.png)
+![wandb model artifact](wandb_artifact.png)
+
 ## Notes
 
 - Runtime artifacts (`mlflow.db`, `mlruns/`, `mlartifacts/`, `wandb/`, `*.joblib`)
