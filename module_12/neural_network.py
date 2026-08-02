@@ -52,6 +52,39 @@ PREDICTION_THRESHOLD = 0.5
 # How often the training loop prints a progress line.
 PRINT_EVERY = 100
 
+# Hand-written applicants used in Section 7 to probe what the model learned.
+# Values are on the raw scale (GPA out of 4.0, GRE on the 130-170 sections);
+# they run through exactly the same fill-and-standardize pipeline as real rows.
+# The last profile deliberately omits every GRE score, which is the common case
+# in this dataset, to show what median-filling does to a prediction.
+ARTIFICIAL_APPLICANTS = [
+    {
+        "profile": "Strong PhD, international",
+        "gpa": 3.95, "gre": 335.0, "gre_v": 165.0, "gre_aw": 5.0,
+        "ms_vs_phd": 1.0, "international_vs_local": 1.0,
+    },
+    {
+        "profile": "Strong PhD, local",
+        "gpa": 3.95, "gre": 335.0, "gre_v": 165.0, "gre_aw": 5.0,
+        "ms_vs_phd": 1.0, "international_vs_local": 0.0,
+    },
+    {
+        "profile": "Average Masters, local",
+        "gpa": 3.40, "gre": 305.0, "gre_v": 152.0, "gre_aw": 3.5,
+        "ms_vs_phd": 0.0, "international_vs_local": 0.0,
+    },
+    {
+        "profile": "Weak Masters, international",
+        "gpa": 2.90, "gre": 295.0, "gre_v": 145.0, "gre_aw": 3.0,
+        "ms_vs_phd": 0.0, "international_vs_local": 1.0,
+    },
+    {
+        "profile": "Strong GPA, no GRE reported",
+        "gpa": 3.90, "gre": np.nan, "gre_v": np.nan, "gre_aw": np.nan,
+        "ms_vs_phd": 1.0, "international_vs_local": 0.0,
+    },
+]
+
 # The six model inputs, in the exact order the network expects them.
 FEATURE_COLUMNS = [
     "gpa",
@@ -159,6 +192,19 @@ def build_dataframe(records):
     return frame
 
 
+def acceptance_rate_by_degree(frame):
+    """Return the acceptance rate for Masters and for PhD applicants.
+
+    Args:
+        frame: The cleaned DataFrame from :func:`build_dataframe`.
+
+    Returns:
+        Tuple ``(masters_rate, phd_rate)`` of acceptance rates.
+    """
+    return (float(frame.loc[frame["ms_vs_phd"] == 0.0, "target"].mean()),
+            float(frame.loc[frame["ms_vs_phd"] == 1.0, "target"].mean()))
+
+
 def report_dataset(frame, original_row_count):
     """Print the Section 1 summary of the cleaned dataset.
 
@@ -173,6 +219,9 @@ def report_dataset(frame, original_row_count):
     print(f"Rejected rows                       : {int((frame['target'] == 0).sum()):,}")
     feature_list = ", ".join(FEATURE_COLUMNS)
     print(f"Final input features ({len(FEATURE_COLUMNS)})            : {feature_list}")
+    masters_rate, phd_rate = acceptance_rate_by_degree(frame)
+    print(f"Acceptance rate by degree           : Masters {masters_rate:.1%}, "
+          f"PhD {phd_rate:.1%}")
     print()
     print("First five rows of the cleaned dataframe:")
     print(frame[FEATURE_COLUMNS + ["target"]].head().to_string(index=False))
@@ -324,12 +373,11 @@ def report_split(data, statistics):
     print("Why these statistics come from the training set only:")
     print("  The test set stands in for applicants the model has never seen. If")
     print("  the medians, means, and standard deviations were computed over the")
-    print("  full dataset, every test row would have contributed to the numbers")
-    print("  used to fill and scale the training rows - that is data leakage.")
-    print("  The reported test score would then be optimistic, because part of")
-    print("  the test set's information reached the model during training.")
-    print("  Fitting on the training split alone keeps the test set a genuinely")
-    print("  held-out estimate of performance on future applicants.")
+    print("  full dataset, every test row would have shaped the numbers used to")
+    print("  fill and scale the training rows - that is data leakage, and the")
+    print("  reported test score would be optimistic because test information")
+    print("  reached the model during training. Fitting on the training split")
+    print("  alone keeps the test set a genuine estimate of future performance.")
 
 
 # --------------------------------------------------------------------------- #
@@ -565,11 +613,11 @@ def report_architecture(model):
     print()
     print("The hidden layer computes a1 = sigmoid(x @ w1 + b1): six different")
     print("non-linear blends of the six standardized inputs. The output layer")
-    print("computes a2 = sigmoid(a1 @ w2 + b2): one weighted summary of those")
-    print("blends, squashed into (0, 1). Because a2 is bounded, rises with the")
-    print("evidence for acceptance, and is trained against 0/1 targets, it reads")
-    print("as a probability-like score - though MSE training leaves it")
-    print("uncalibrated, so it is not a literal admission probability.")
+    print("computes a2 = sigmoid(a1 @ w2 + b2), one weighted summary of those")
+    print("blends squashed into (0, 1). Bounded, rising with the evidence for")
+    print("acceptance, and trained against 0/1 targets, a2 reads as a")
+    print("probability-like score - but MSE training leaves it uncalibrated, so")
+    print("it is not a literal admission probability.")
 
 
 # --------------------------------------------------------------------------- #
@@ -786,23 +834,23 @@ def report_evaluation(model, data, result):
     print(f"Training MSE at best parameters  : {train_mse:.6f}")
     print(f"Majority-class baseline (test)   : {majority_baseline:.4f}")
     print()
+    parameter_count = model.w1.size + model.b1.size + model.w2.size + model.b2.size
+
     print("Interpretation:")
-    print(f"  Overfitting: the training MSE ({train_mse:.6f}) and the test MSE")
-    print(f"  ({result.best_test_mse:.6f}) sit within "
-          f"{abs(train_mse - result.best_test_mse):.6f} of each other, and both")
-    print("  curves fall together for the whole run, so this model is not")
-    print("  overfitting. With only 6 hidden units and 49 parameters against")
-    print(f"  {len(data.x_train):,} training rows, it has far too little capacity to")
-    print("  memorize the data - if anything it is underfitting.")
-    print(f"  Strength: {test_accuracy:.4f} test accuracy beats both the 50% coin")
-    print(f"  flip and the {majority_baseline:.4f} majority-class baseline, so the")
-    print("  network has learned real signal rather than just guessing the more")
-    print("  common outcome. It is a modest but genuine improvement, not a")
-    print("  strong admissions predictor.")
-    print("  Stability: test accuracy is flat across long stretches of training")
-    print("  and the test MSE curve is smooth and monotone, so the result is")
-    print("  stable rather than a lucky epoch - though accuracy moves in steps,")
-    print("  because it only changes when scores cross the 0.5 threshold.")
+    print(f"  Overfitting: training MSE ({train_mse:.6f}) and test MSE")
+    print(f"  ({result.best_test_mse:.6f}) sit "
+          f"{abs(train_mse - result.best_test_mse):.6f} apart and fall together")
+    print("  for the whole run, so the model is not overfitting. With only")
+    print(f"  {parameter_count} parameters against {len(data.x_train):,} training rows it")
+    print("  has far too little capacity to memorize - if anything, it underfits.")
+    print(f"  Strength: {test_accuracy:.4f} test accuracy beats the 0.5000 coin flip")
+    print(f"  and the {majority_baseline:.4f} majority-class baseline, so the network")
+    print("  found real signal rather than guessing the more common outcome -")
+    print("  a modest gain, not a strong admissions predictor.")
+    print("  Stability: the test MSE curve is smooth and monotone and accuracy")
+    print("  holds flat over long stretches, so this is not a lucky epoch.")
+    print("  Accuracy moves in steps because it only changes when scores cross")
+    print("  the 0.5 threshold.")
 
 
 # --------------------------------------------------------------------------- #
@@ -842,6 +890,100 @@ def plot_mse_curve(result, output_path=MSE_CURVE_PATH):
     print_banner("SECTION 6 - MSE CURVE")
     print(f"Saved the training/test MSE curve to {output_path.name} "
           f"({len(history['epoch']):,} epochs plotted).")
+
+
+# --------------------------------------------------------------------------- #
+# Section 7 - run the trained model on artificial applicants
+# --------------------------------------------------------------------------- #
+def score_artificial_applicants(model, statistics):
+    """Predict outcomes for the hand-written applicants in Section 7.
+
+    The artificial rows go through the identical pipeline used for real data:
+    missing values filled with the stored *training* medians, then standardized
+    with the stored *training* means and standard deviations.
+
+    Args:
+        model: The trained model with best parameters restored.
+        statistics: The training-set statistics from Section 2.
+
+    Returns:
+        A DataFrame of the applicants with predicted probability, binary label,
+        and status appended.
+    """
+    applicants = pd.DataFrame(ARTIFICIAL_APPLICANTS)
+
+    # Same preprocessing as the real data, using the stored training statistics.
+    raw_features = applicants[FEATURE_COLUMNS].to_numpy(dtype=float)
+    processed_features = preprocess_features(raw_features, statistics)
+
+    probabilities = model.predict_proba(processed_features)
+    labels = model.predict(processed_features)
+
+    applicants["probability"] = probabilities.ravel()
+    applicants["label"] = labels.ravel().astype(int)
+    applicants["status"] = np.where(labels.ravel() == 1.0, "Accepted", "Rejected")
+
+    return applicants
+
+
+def probability_for(applicants, profile):
+    """Look up one artificial applicant's predicted probability.
+
+    Args:
+        applicants: The scored applicant DataFrame.
+        profile: The profile label to look up.
+
+    Returns:
+        The predicted probability as a float.
+    """
+    return float(applicants.loc[applicants["profile"] == profile,
+                                "probability"].iloc[0])
+
+
+def report_artificial_applicants(applicants, degree_rates):
+    """Print the Section 7 prediction table and what it shows.
+
+    Args:
+        applicants: The DataFrame returned by :func:`score_artificial_applicants`.
+        degree_rates: ``(masters_rate, phd_rate)`` acceptance rates from the
+            filtered dataset, used to explain the predictions.
+    """
+    print_banner("SECTION 7 - PREDICTIONS FOR ARTIFICIAL APPLICANTS")
+    print(applicants.to_string(index=False, na_rep="NaN",
+                               float_format=lambda value: f"{value:.4f}"))
+    print()
+
+    ranked = applicants.sort_values("probability", ascending=False)
+    strongest, weakest = ranked.iloc[0], ranked.iloc[-1]
+    accepted_count = int((applicants["label"] == 1).sum())
+    citizenship_gap = (probability_for(applicants, "Strong PhD, international")
+                       - probability_for(applicants, "Strong PhD, local"))
+    masters_gap = (probability_for(applicants, "Average Masters, local")
+                   - probability_for(applicants, "Weak Masters, international"))
+
+    print("What these predictions show:")
+    print(f"  Scores span {weakest['probability']:.4f} ({weakest['profile']}) to "
+          f"{strongest['probability']:.4f} ({strongest['profile']}),")
+    print(f"  and {accepted_count} of {len(applicants)} profiles clear the 0.5 "
+          "threshold.")
+    print("  The ordering is driven by degree type, not by credentials: every")
+    print("  Masters profile outscores every PhD profile, even though the top")
+    print("  PhD applicant carries a full GPA point and 40 GRE points more than")
+    print(f"  the weakest Masters one. That is the data speaking - "
+          f"{degree_rates[0]:.1%} of")
+    print(f"  Masters rows here were accepted versus {degree_rates[1]:.1%} of PhD "
+          "rows - but")
+    print("  it means the network is largely reproducing base rates by degree")
+    print("  rather than judging an applicant's strength.")
+    print("  Within a degree the numbers do move the score the expected way:")
+    print(f"  the average Masters applicant scores {masters_gap:+.4f} against the")
+    print("  weak one, and citizenship shifts two otherwise identical PhD")
+    print(f"  applicants by {citizenship_gap:+.4f}. Both effects are small next to")
+    print("  the degree flag.")
+    print("  The 'no GRE reported' applicant is scored as if holding median GRE")
+    print("  values - exactly what median-filling does. About nine in ten real")
+    print("  rows lack GRE scores, so most predictions lean on GPA, degree, and")
+    print("  citizenship whether or not test scores were supplied.")
 
 
 class _Tee:
@@ -930,6 +1072,10 @@ def run_pipeline(data_path):
 
     # Section 6 - plot the loss curves.
     plot_mse_curve(result)
+
+    # Section 7 - probe the trained model with hand-written applicants.
+    report_artificial_applicants(score_artificial_applicants(model, statistics),
+                                 acceptance_rate_by_degree(frame))
 
 
 def main():
