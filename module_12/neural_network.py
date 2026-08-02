@@ -31,6 +31,18 @@ DEFAULT_DATA_PATH = Path(__file__).with_name("applicant_data.json")
 
 RANDOM_SEED = 42
 TEST_SIZE = 0.2
+HIDDEN_UNITS = 6
+LEARNING_RATE = 0.05
+MAX_EPOCHS = 10000
+PATIENCE = 100
+
+# Weights start from a normal distribution with mean 0 and standard deviation
+# 0.1; biases start at 0.
+WEIGHT_INIT_MEAN = 0.0
+WEIGHT_INIT_STD = 0.1
+
+# A predicted probability at or above this value counts as "Accepted".
+PREDICTION_THRESHOLD = 0.5
 
 # The six model inputs, in the exact order the network expects them.
 FEATURE_COLUMNS = [
@@ -295,6 +307,246 @@ def report_split(x_train, x_test, y_train, y_test, statistics):
     print("  held-out estimate of performance on future applicants.")
 
 
+# --------------------------------------------------------------------------- #
+# Section 3 - a two-layer neural network written with NumPy only
+# --------------------------------------------------------------------------- #
+def sigmoid(values):
+    """Squash any real number into the open interval (0, 1).
+
+    Args:
+        values: Array of pre-activation values.
+
+    Returns:
+        The element-wise sigmoid ``1 / (1 + exp(-x))``.
+    """
+    return 1.0 / (1.0 + np.exp(-values))
+
+
+def mean_squared_error(predictions, targets):
+    """Compute the mean squared error between predictions and targets.
+
+    MSE is the loss the assignment requires, even though this is a
+    classification problem.
+
+    Args:
+        predictions: Predicted values, shape ``(n_samples, 1)``.
+        targets: True values, shape ``(n_samples, 1)``.
+
+    Returns:
+        The mean squared error as a float.
+    """
+    return float(np.mean((predictions - targets) ** 2))
+
+
+def accuracy_score(predicted_labels, targets):
+    """Compute the fraction of labels predicted correctly.
+
+    Args:
+        predicted_labels: Binary predictions, shape ``(n_samples, 1)``.
+        targets: True 0/1 labels, shape ``(n_samples, 1)``.
+
+    Returns:
+        Accuracy as a float between 0 and 1.
+    """
+    return float(np.mean(predicted_labels == targets))
+
+
+class TwoLayerNeuralNetwork:
+    """A fully connected 6 -> 6 -> 1 network with sigmoid activations.
+
+    Shapes, for six input features and six hidden units:
+
+    * ``w1`` is ``(6, 6)`` - one weight per (input feature, hidden unit) pair.
+    * ``b1`` is ``(1, 6)`` - one bias per hidden unit, broadcast over rows.
+    * ``w2`` is ``(6, 1)`` - one weight per (hidden unit, output unit) pair.
+    * ``b2`` is ``(1, 1)`` - the single output unit's bias.
+
+    What each layer computes:
+
+    * The hidden layer computes ``a1 = sigmoid(x @ w1 + b1)``. Each of the six
+      hidden units forms its own weighted blend of all six standardized inputs,
+      shifts it by a bias, and squashes it to (0, 1). Because every unit gets a
+      different weight vector, the layer learns six different re-descriptions of
+      an applicant, and the sigmoid makes each one non-linear - which is what
+      lets the network represent interactions (for example, a strong GPA
+      mattering more for a PhD applicant than for a Masters applicant) that a
+      single linear layer could not.
+    * The output layer computes ``a2 = sigmoid(a1 @ w2 + b2)``. It weighs those
+      six learned descriptions into one number and squashes it again.
+
+    Why the output reads as a probability-like score: the final sigmoid is bound
+    to (0, 1) and increases monotonically with the evidence for acceptance, and
+    the network is trained against 0/1 targets, so it is driven toward the
+    average target value for applicants that look like the input. That makes it
+    interpretable as "how accept-like this applicant looks" and comparable
+    across applicants. It is only *probability-like*, not a calibrated
+    probability: trained under MSE rather than a proper scoring rule such as
+    cross-entropy, the values are systematically pulled toward the middle of the
+    range and should not be read as literal admission odds.
+    """
+
+    def __init__(self, input_units, hidden_units=HIDDEN_UNITS,
+                 learning_rate=LEARNING_RATE, seed=RANDOM_SEED):
+        """Initialize weights from N(0, 0.1) and biases to zero.
+
+        Args:
+            input_units: Number of input features (6 for this assignment).
+            hidden_units: Number of hidden units.
+            learning_rate: Step size for gradient descent.
+            seed: Seed for the random number generator, for reproducibility.
+        """
+        generator = np.random.default_rng(seed)
+        self.learning_rate = learning_rate
+
+        self.w1 = generator.normal(WEIGHT_INIT_MEAN, WEIGHT_INIT_STD,
+                                   size=(input_units, hidden_units))
+        self.b1 = np.zeros((1, hidden_units))
+        self.w2 = generator.normal(WEIGHT_INIT_MEAN, WEIGHT_INIT_STD,
+                                   size=(hidden_units, 1))
+        self.b2 = np.zeros((1, 1))
+
+        # Activations cached by forward() for the matching backward() call.
+        self.hidden_activations = None
+        self.output_activations = None
+
+    def forward(self, features):
+        """Run a forward pass and cache the activations for backpropagation.
+
+        Args:
+            features: Standardized feature matrix, shape ``(n_samples, 6)``.
+
+        Returns:
+            Output activations, shape ``(n_samples, 1)``.
+        """
+        self.hidden_activations = sigmoid(features @ self.w1 + self.b1)
+        self.output_activations = sigmoid(self.hidden_activations @ self.w2 + self.b2)
+        return self.output_activations
+
+    def backward(self, features, targets):
+        """Backpropagate the MSE loss and take one gradient-descent step.
+
+        Uses the activations cached by the most recent :meth:`forward` call on
+        the same batch. With ``loss = mean((a2 - y) ** 2)`` over ``n`` samples:
+
+        * ``d_output = 2 * (a2 - y) / n * a2 * (1 - a2)`` - the loss derivative
+          times the sigmoid derivative at the output unit.
+        * ``d_hidden = (d_output @ w2.T) * a1 * (1 - a1)`` - that error carried
+          back through the output weights and through the hidden sigmoid.
+
+        Args:
+            features: The same feature matrix passed to :meth:`forward`.
+            targets: True 0/1 labels, shape ``(n_samples, 1)``.
+        """
+        sample_count = features.shape[0]
+
+        # Output layer: derivative of MSE, then of the output sigmoid.
+        loss_gradient = 2.0 * (self.output_activations - targets) / sample_count
+        output_delta = loss_gradient * self.output_activations * (1.0 - self.output_activations)
+        w2_gradient = self.hidden_activations.T @ output_delta
+        b2_gradient = output_delta.sum(axis=0, keepdims=True)
+
+        # Hidden layer: the output error, credited back through w2, then through
+        # the hidden sigmoid.
+        hidden_delta = (output_delta @ self.w2.T) * \
+            self.hidden_activations * (1.0 - self.hidden_activations)
+        w1_gradient = features.T @ hidden_delta
+        b1_gradient = hidden_delta.sum(axis=0, keepdims=True)
+
+        # Full-batch gradient-descent update: step downhill on every parameter.
+        self.w2 -= self.learning_rate * w2_gradient
+        self.b2 -= self.learning_rate * b2_gradient
+        self.w1 -= self.learning_rate * w1_gradient
+        self.b1 -= self.learning_rate * b1_gradient
+
+    def predict_proba(self, features):
+        """Return probability-like scores without disturbing the cache.
+
+        Evaluating the test set must not overwrite the activations that
+        :meth:`backward` still needs from the training pass, so this recomputes
+        the forward pass locally instead of calling :meth:`forward`.
+
+        Args:
+            features: Standardized feature matrix, shape ``(n_samples, 6)``.
+
+        Returns:
+            Scores in (0, 1), shape ``(n_samples, 1)``.
+        """
+        hidden = sigmoid(features @ self.w1 + self.b1)
+        return sigmoid(hidden @ self.w2 + self.b2)
+
+    def predict(self, features, threshold=PREDICTION_THRESHOLD):
+        """Return hard 0/1 predictions by thresholding the scores.
+
+        Args:
+            features: Standardized feature matrix, shape ``(n_samples, 6)``.
+            threshold: Score at or above which the applicant is predicted
+                Accepted.
+
+        Returns:
+            Binary predictions as floats, shape ``(n_samples, 1)``.
+        """
+        return (self.predict_proba(features) >= threshold).astype(float)
+
+    def get_parameters(self):
+        """Copy the current weights and biases.
+
+        Used to snapshot the best-scoring parameters during early stopping.
+
+        Returns:
+            A dict of copied parameter arrays.
+        """
+        return {
+            "w1": self.w1.copy(),
+            "b1": self.b1.copy(),
+            "w2": self.w2.copy(),
+            "b2": self.b2.copy(),
+        }
+
+    def set_parameters(self, parameters):
+        """Restore weights and biases from a snapshot.
+
+        Args:
+            parameters: A dict produced by :meth:`get_parameters`.
+        """
+        self.w1 = parameters["w1"].copy()
+        self.b1 = parameters["b1"].copy()
+        self.w2 = parameters["w2"].copy()
+        self.b2 = parameters["b2"].copy()
+
+
+def report_architecture(model):
+    """Print the Section 3 description of the network.
+
+    Args:
+        model: The initialized :class:`TwoLayerNeuralNetwork`.
+    """
+    print_banner("SECTION 3 - TWO-LAYER NEURAL NETWORK (NUMPY ONLY)")
+    print(f"Architecture      : {model.w1.shape[0]} inputs -> "
+          f"{model.w1.shape[1]} hidden units -> {model.w2.shape[1]} output unit")
+    print("Activations       : sigmoid after the hidden layer, "
+          "sigmoid after the output layer")
+    print("Loss function     : mean squared error")
+    print(f"Initialization    : weights ~ N({WEIGHT_INIT_MEAN}, "
+          f"{WEIGHT_INIT_STD}), biases = 0")
+    print(f"Hyperparameters   : RANDOM_SEED={RANDOM_SEED}, "
+          f"HIDDEN_UNITS={HIDDEN_UNITS}, LEARNING_RATE={LEARNING_RATE},")
+    print(f"                    MAX_EPOCHS={MAX_EPOCHS}, PATIENCE={PATIENCE}")
+    print()
+    print("Parameter shapes:")
+    print(f"  w1 {str(model.w1.shape):<8} one weight per (input feature, hidden unit)")
+    print(f"  b1 {str(model.b1.shape):<8} one bias per hidden unit")
+    print(f"  w2 {str(model.w2.shape):<8} one weight per (hidden unit, output unit)")
+    print(f"  b2 {str(model.b2.shape):<8} the output unit's bias")
+    print()
+    print("The hidden layer computes a1 = sigmoid(x @ w1 + b1): six different")
+    print("non-linear blends of the six standardized inputs. The output layer")
+    print("computes a2 = sigmoid(a1 @ w2 + b2): one weighted summary of those")
+    print("blends, squashed into (0, 1). Because a2 is bounded, rises with the")
+    print("evidence for acceptance, and is trained against 0/1 targets, it reads")
+    print("as a probability-like score - though MSE training leaves it")
+    print("uncalibrated, so it is not a literal admission probability.")
+
+
 def parse_arguments():
     """Parse command-line arguments.
 
@@ -326,6 +578,10 @@ def main():
     x_train = preprocess_features(x_train_raw, statistics)
     x_test = preprocess_features(x_test_raw, statistics)
     report_split(x_train, x_test, y_train, y_test, statistics)
+
+    # Section 3 - build the network.
+    model = TwoLayerNeuralNetwork(input_units=len(FEATURE_COLUMNS))
+    report_architecture(model)
 
 
 if __name__ == "__main__":
