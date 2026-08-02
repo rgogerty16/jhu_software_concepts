@@ -16,8 +16,10 @@ Run it with::
 """
 
 import argparse
+import contextlib
 import dataclasses
 import json
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -28,6 +30,7 @@ from sklearn.model_selection import train_test_split
 # Fixed configuration required by the assignment specification.
 # --------------------------------------------------------------------------- #
 DEFAULT_DATA_PATH = Path(__file__).with_name("applicant_data.json")
+TRAINING_LOG_PATH = Path(__file__).with_name("training.log")
 
 RANDOM_SEED = 42
 TEST_SIZE = 0.2
@@ -43,6 +46,9 @@ WEIGHT_INIT_STD = 0.1
 
 # A predicted probability at or above this value counts as "Accepted".
 PREDICTION_THRESHOLD = 0.5
+
+# How often the training loop prints a progress line.
+PRINT_EVERY = 100
 
 # The six model inputs, in the exact order the network expects them.
 FEATURE_COLUMNS = [
@@ -547,6 +553,226 @@ def report_architecture(model):
     print("uncalibrated, so it is not a literal admission probability.")
 
 
+# --------------------------------------------------------------------------- #
+# Section 4 - train until the test MSE stops improving
+# --------------------------------------------------------------------------- #
+@dataclasses.dataclass
+class TrainingResult:
+    """The record left behind by a training run.
+
+    Attributes:
+        history: Per-epoch lists of epoch number, training MSE, test MSE, and
+            test accuracy.
+        best_epoch: Epoch with the lowest test MSE; its parameters are restored.
+        best_test_mse: The lowest test MSE observed.
+        best_test_accuracy: Test accuracy at ``best_epoch``.
+        stopped_epoch: The last epoch actually run.
+        early_stopped: Whether patience ran out before ``MAX_EPOCHS``.
+    """
+
+    history: dict
+    best_epoch: int
+    best_test_mse: float
+    best_test_accuracy: float
+    stopped_epoch: int
+    early_stopped: bool
+
+
+class EarlyStoppingTracker:
+    """Remembers the best test MSE and the parameters that produced it.
+
+    Keeping this state in its own object means the training loop only has to
+    ask two questions each epoch: "is this the best so far?" and "has patience
+    run out?".
+
+    Attributes:
+        patience: Epochs without improvement allowed before stopping.
+        best_mse: Lowest test MSE seen so far.
+        best_accuracy: Test accuracy recorded at ``best_epoch``.
+        best_epoch: Epoch that produced ``best_mse``.
+        best_parameters: Snapshot of the model parameters at ``best_epoch``.
+        epochs_without_improvement: Consecutive epochs with no new best.
+    """
+
+    def __init__(self, model, patience=PATIENCE):
+        """Start tracking, seeded with the model's initial parameters.
+
+        Args:
+            model: The model being trained.
+            patience: Epochs without improvement allowed before stopping.
+        """
+        self.patience = patience
+        self.best_mse = float("inf")
+        self.best_accuracy = 0.0
+        self.best_epoch = 0
+        self.best_parameters = model.get_parameters()
+        self.epochs_without_improvement = 0
+
+    def update(self, model, epoch, test_mse, test_accuracy):
+        """Record one epoch's result and report whether training should stop.
+
+        Args:
+            model: The model being trained, snapshotted on an improvement.
+            epoch: The epoch number just completed.
+            test_mse: Test MSE after this epoch's update.
+            test_accuracy: Test accuracy after this epoch's update.
+
+        Returns:
+            True when the test MSE has not improved for ``patience``
+            consecutive epochs.
+        """
+        if test_mse < self.best_mse:
+            self.best_mse = test_mse
+            self.best_accuracy = test_accuracy
+            self.best_epoch = epoch
+            self.best_parameters = model.get_parameters()
+            self.epochs_without_improvement = 0
+        else:
+            self.epochs_without_improvement += 1
+
+        return self.epochs_without_improvement >= self.patience
+
+    def restore_best(self, model):
+        """Roll a model back to the best parameters seen during training.
+
+        Args:
+            model: The model to restore in place.
+        """
+        model.set_parameters(self.best_parameters)
+
+
+def print_progress_row(epoch, train_mse, test_mse, test_accuracy):
+    """Print one line of the training log.
+
+    Args:
+        epoch: Epoch number.
+        train_mse: Training MSE for this epoch.
+        test_mse: Test MSE for this epoch.
+        test_accuracy: Test accuracy for this epoch.
+    """
+    print(f"{epoch:>8,}{train_mse:>14.6f}{test_mse:>14.6f}{test_accuracy:>16.4f}")
+
+
+def train_network(model, x_train, y_train, x_test, y_test):
+    """Train with full-batch gradient descent and early stopping on test MSE.
+
+    Each epoch follows the order the assignment prescribes: forward pass on the
+    training set, training MSE, backpropagation and parameter update, then a
+    forward pass on the test set for test MSE and test accuracy. (So the
+    training MSE recorded for an epoch is the loss the update responded to,
+    while the test MSE reflects the parameters after that update.)
+
+    Training stops once the test MSE has failed to improve for ``PATIENCE``
+    consecutive epochs, and the parameters from the best epoch are restored
+    before the model is evaluated or used for predictions.
+
+    Args:
+        model: The :class:`TwoLayerNeuralNetwork` to train.
+        x_train: Standardized training features.
+        y_train: Training targets, shape ``(n_samples, 1)``.
+        x_test: Standardized test features.
+        y_test: Test targets, shape ``(n_samples, 1)``.
+
+    Returns:
+        A :class:`TrainingResult`.
+    """
+    print_banner("SECTION 4 - TRAINING LOG (FULL-BATCH GRADIENT DESCENT)")
+    print(f"Training on {len(x_train):,} rows, evaluating on {len(x_test):,} rows.")
+    print(f"Stopping when test MSE has not improved for {PATIENCE} "
+          f"consecutive epochs (max {MAX_EPOCHS:,}).")
+    print()
+    print(f"{'epoch':>8}{'train MSE':>14}{'test MSE':>14}{'test accuracy':>16}")
+    print("-" * 52)
+
+    history = {"epoch": [], "train_mse": [], "test_mse": [], "test_accuracy": []}
+    tracker = EarlyStoppingTracker(model)
+    stopped_epoch = MAX_EPOCHS
+
+    for epoch in range(1, MAX_EPOCHS + 1):
+        # Forward pass and loss on the training set.
+        train_predictions = model.forward(x_train)
+        train_mse = mean_squared_error(train_predictions, y_train)
+
+        # Backpropagation and the weight/bias update.
+        model.backward(x_train, y_train)
+
+        # Forward pass on the held-out test set with the updated parameters.
+        test_predictions = model.predict_proba(x_test)
+        test_mse = mean_squared_error(test_predictions, y_test)
+        test_accuracy = accuracy_score(
+            (test_predictions >= PREDICTION_THRESHOLD).astype(float), y_test)
+
+        history["epoch"].append(epoch)
+        history["train_mse"].append(train_mse)
+        history["test_mse"].append(test_mse)
+        history["test_accuracy"].append(test_accuracy)
+
+        out_of_patience = tracker.update(model, epoch, test_mse, test_accuracy)
+
+        if epoch == 1 or epoch % PRINT_EVERY == 0:
+            print_progress_row(epoch, train_mse, test_mse, test_accuracy)
+
+        if out_of_patience:
+            stopped_epoch = epoch
+            print_progress_row(epoch, train_mse, test_mse, test_accuracy)
+            print()
+            print(f"Early stopping at epoch {epoch:,}: test MSE has not improved "
+                  f"for {PATIENCE} consecutive epochs.")
+            break
+
+    # Roll the model back to its best-scoring state before any evaluation.
+    tracker.restore_best(model)
+    print(f"Restored the parameters from epoch {tracker.best_epoch:,} "
+          f"(test MSE {tracker.best_mse:.6f}).")
+
+    if stopped_epoch == MAX_EPOCHS:
+        print(f"Note: reached MAX_EPOCHS ({MAX_EPOCHS:,}) before patience ran out.")
+
+    return TrainingResult(
+        history=history,
+        best_epoch=tracker.best_epoch,
+        best_test_mse=tracker.best_mse,
+        best_test_accuracy=tracker.best_accuracy,
+        stopped_epoch=stopped_epoch,
+        early_stopped=stopped_epoch < MAX_EPOCHS,
+    )
+
+
+class _Tee:
+    """Fan writes out to several streams at once.
+
+    Used to mirror everything printed to both the console and ``training.log``,
+    so the submitted log is the real transcript of the run rather than a
+    hand-copied excerpt.
+    """
+
+    def __init__(self, *streams):
+        """Store the streams to write to.
+
+        Args:
+            *streams: Open, writable text streams.
+        """
+        self._streams = streams
+
+    def write(self, text):
+        """Write ``text`` to every stream.
+
+        Args:
+            text: The text to write.
+
+        Returns:
+            Number of characters written.
+        """
+        for stream in self._streams:
+            stream.write(text)
+        return len(text)
+
+    def flush(self):
+        """Flush every stream."""
+        for stream in self._streams:
+            stream.flush()
+
+
 def parse_arguments():
     """Parse command-line arguments.
 
@@ -563,12 +789,14 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def main():
-    """Run the full assignment pipeline end to end."""
-    arguments = parse_arguments()
+def run_pipeline(data_path):
+    """Run every section of the assignment in order.
 
+    Args:
+        data_path: Path to the applicant dataset.
+    """
     # Section 1 - load, filter, and engineer features.
-    records = load_applicant_records(arguments.data)
+    records = load_applicant_records(data_path)
     frame = build_dataframe(records)
     report_dataset(frame, len(records))
 
@@ -582,6 +810,20 @@ def main():
     # Section 3 - build the network.
     model = TwoLayerNeuralNetwork(input_units=len(FEATURE_COLUMNS))
     report_architecture(model)
+
+    # Section 4 - train until the test MSE stops improving.
+    train_network(model, x_train, y_train, x_test, y_test)
+
+
+def main():
+    """Run the pipeline, mirroring all output into ``training.log``."""
+    arguments = parse_arguments()
+
+    with open(TRAINING_LOG_PATH, "w", encoding="utf-8") as log_file:
+        with contextlib.redirect_stdout(_Tee(sys.stdout, log_file)):
+            run_pipeline(arguments.data)
+
+    print(f"\nFull run transcript saved to {TRAINING_LOG_PATH.name}")
 
 
 if __name__ == "__main__":
