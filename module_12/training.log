@@ -38,7 +38,7 @@ Why these statistics come from the training set only:
   The test set stands in for applicants the model has never seen. If
   the medians, means, and standard deviations were computed over the
   full dataset, every test row would have shaped the numbers used to
-  fill and scale the training rows - that is data leakage, and the
+  fill and scale the training rows. That is data leakage, and the
   reported test score would be optimistic because test information
   reached the model during training. Fitting on the training split
   alone keeps the test set a genuine estimate of future performance.
@@ -64,8 +64,8 @@ non-linear blends of the six standardized inputs. The output layer
 computes a2 = sigmoid(a1 @ w2 + b2), one weighted summary of those
 blends squashed into (0, 1). Bounded, rising with the evidence for
 acceptance, and trained against 0/1 targets, a2 reads as a
-probability-like score - but MSE training leaves it uncalibrated, so
-it is not a literal admission probability.
+probability-like score. MSE training leaves it uncalibrated, though,
+so it is not a literal admission probability.
 
 ==============================================================================
 SECTION 4 - TRAINING LOG (FULL-BATCH GRADIENT DESCENT)
@@ -159,11 +159,11 @@ Interpretation:
   (0.207908) sit 0.001673 apart and fall together
   for the whole run, so the model is not overfitting. With only
   49 parameters against 19,460 training rows it
-  has far too little capacity to memorize - if anything, it underfits.
+  has far too little capacity to memorize. If anything, it underfits.
   Strength: 0.7043 test accuracy beats the 0.5000 coin flip
   and the 0.5697 majority-class baseline, so the network
-  found real signal rather than guessing the more common outcome -
-  a modest gain, not a strong admissions predictor.
+  found real signal rather than guessing the more common outcome.
+  It is a modest gain, not a strong admissions predictor.
   Stability: the test MSE curve is smooth and monotone and accuracy
   holds flat over long stretches, so this is not a lucky epoch.
   Accuracy moves in steps because it only changes when scores cross
@@ -190,16 +190,16 @@ What these predictions show:
   The ordering is driven by degree type, not by credentials: every
   Masters profile outscores every PhD profile, even though the top
   PhD applicant carries a full GPA point and 40 GRE points more than
-  the weakest Masters one. That is the data speaking - 75.9% of
-  Masters rows here were accepted versus 31.6% of PhD rows - but
-  it means the network is largely reproducing base rates by degree
-  rather than judging an applicant's strength.
+  the weakest Masters one. That is the data speaking, since 75.9%
+  of Masters rows here were accepted versus 31.6% of PhD
+  rows. It does mean the network is largely reproducing base rates by
+  degree rather than judging an applicant's strength.
   Within a degree the numbers do move the score the expected way:
   the average Masters applicant scores +0.0467 against the
   weak one, and citizenship shifts two otherwise identical PhD
   applicants by -0.0197. Both effects are small next to
   the degree flag.
   The 'no GRE reported' applicant is scored as if holding median GRE
-  values - exactly what median-filling does. About nine in ten real
-  rows lack GRE scores, so most predictions lean on GPA, degree, and
-  citizenship whether or not test scores were supplied.
+  values, which is exactly what median-filling does. About nine in ten
+  real rows lack GRE scores, so most predictions lean on GPA, degree,
+  and citizenship whether or not test scores were supplied.

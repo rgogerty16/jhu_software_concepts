@@ -341,7 +341,7 @@ def report_split(data, statistics):
     print("  The test set stands in for applicants the model has never seen. If")
     print("  the medians, means, and standard deviations were computed over the")
     print("  full dataset, every test row would have shaped the numbers used to")
-    print("  fill and scale the training rows - that is data leakage, and the")
+    print("  fill and scale the training rows. That is data leakage, and the")
     print("  reported test score would be optimistic because test information")
     print("  reached the model during training. Fitting on the training split")
     print("  alone keeps the test set a genuine estimate of future performance.")
@@ -583,8 +583,8 @@ def report_architecture(model):
     print("computes a2 = sigmoid(a1 @ w2 + b2), one weighted summary of those")
     print("blends squashed into (0, 1). Bounded, rising with the evidence for")
     print("acceptance, and trained against 0/1 targets, a2 reads as a")
-    print("probability-like score - but MSE training leaves it uncalibrated, so")
-    print("it is not a literal admission probability.")
+    print("probability-like score. MSE training leaves it uncalibrated, though,")
+    print("so it is not a literal admission probability.")
 
 
 # --------------------------------------------------------------------------- #
@@ -809,11 +809,11 @@ def report_evaluation(model, data, result):
           f"{abs(train_mse - result.best_test_mse):.6f} apart and fall together")
     print("  for the whole run, so the model is not overfitting. With only")
     print(f"  {parameter_count} parameters against {len(data.x_train):,} training rows it")
-    print("  has far too little capacity to memorize - if anything, it underfits.")
+    print("  has far too little capacity to memorize. If anything, it underfits.")
     print(f"  Strength: {test_accuracy:.4f} test accuracy beats the 0.5000 coin flip")
     print(f"  and the {majority_baseline:.4f} majority-class baseline, so the network")
-    print("  found real signal rather than guessing the more common outcome -")
-    print("  a modest gain, not a strong admissions predictor.")
+    print("  found real signal rather than guessing the more common outcome.")
+    print("  It is a modest gain, not a strong admissions predictor.")
     print("  Stability: the test MSE curve is smooth and monotone and accuracy")
     print("  holds flat over long stretches, so this is not a lucky epoch.")
     print("  Accuracy moves in steps because it only changes when scores cross")
@@ -970,21 +970,20 @@ def report_artificial_applicants(applicants, degree_rates):
     print("  The ordering is driven by degree type, not by credentials: every")
     print("  Masters profile outscores every PhD profile, even though the top")
     print("  PhD applicant carries a full GPA point and 40 GRE points more than")
-    print(f"  the weakest Masters one. That is the data speaking - "
-          f"{degree_rates[0]:.1%} of")
-    print(f"  Masters rows here were accepted versus {degree_rates[1]:.1%} of PhD "
-          "rows - but")
-    print("  it means the network is largely reproducing base rates by degree")
-    print("  rather than judging an applicant's strength.")
+    print(f"  the weakest Masters one. That is the data speaking, since "
+          f"{degree_rates[0]:.1%}")
+    print(f"  of Masters rows here were accepted versus {degree_rates[1]:.1%} of PhD")
+    print("  rows. It does mean the network is largely reproducing base rates by")
+    print("  degree rather than judging an applicant's strength.")
     print("  Within a degree the numbers do move the score the expected way:")
     print(f"  the average Masters applicant scores {masters_gap:+.4f} against the")
     print("  weak one, and citizenship shifts two otherwise identical PhD")
     print(f"  applicants by {citizenship_gap:+.4f}. Both effects are small next to")
     print("  the degree flag.")
     print("  The 'no GRE reported' applicant is scored as if holding median GRE")
-    print("  values - exactly what median-filling does. About nine in ten real")
-    print("  rows lack GRE scores, so most predictions lean on GPA, degree, and")
-    print("  citizenship whether or not test scores were supplied.")
+    print("  values, which is exactly what median-filling does. About nine in ten")
+    print("  real rows lack GRE scores, so most predictions lean on GPA, degree,")
+    print("  and citizenship whether or not test scores were supplied.")
 
 
 class _Tee:

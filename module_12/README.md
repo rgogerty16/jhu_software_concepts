@@ -1,7 +1,7 @@
 # Module 12 — A Two-Layer Neural Network for Graduate Admissions Prediction
 
 - **Name:** Ryan Gogerty
-- **JHED:** rgogerty
+- **JHED:** rgogerty1
 - **Course:** EN.605.256 — Modern Software Concepts in Python
 - **Assignment:** Module 12 — Neural Networks
 
