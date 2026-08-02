@@ -52,39 +52,6 @@ PREDICTION_THRESHOLD = 0.5
 # How often the training loop prints a progress line.
 PRINT_EVERY = 100
 
-# Hand-written applicants used in Section 7 to probe what the model learned.
-# Values are on the raw scale (GPA out of 4.0, GRE on the 130-170 sections);
-# they run through exactly the same fill-and-standardize pipeline as real rows.
-# The last profile deliberately omits every GRE score, which is the common case
-# in this dataset, to show what median-filling does to a prediction.
-ARTIFICIAL_APPLICANTS = [
-    {
-        "profile": "Strong PhD, international",
-        "gpa": 3.95, "gre": 335.0, "gre_v": 165.0, "gre_aw": 5.0,
-        "ms_vs_phd": 1.0, "international_vs_local": 1.0,
-    },
-    {
-        "profile": "Strong PhD, local",
-        "gpa": 3.95, "gre": 335.0, "gre_v": 165.0, "gre_aw": 5.0,
-        "ms_vs_phd": 1.0, "international_vs_local": 0.0,
-    },
-    {
-        "profile": "Average Masters, local",
-        "gpa": 3.40, "gre": 305.0, "gre_v": 152.0, "gre_aw": 3.5,
-        "ms_vs_phd": 0.0, "international_vs_local": 0.0,
-    },
-    {
-        "profile": "Weak Masters, international",
-        "gpa": 2.90, "gre": 295.0, "gre_v": 145.0, "gre_aw": 3.0,
-        "ms_vs_phd": 0.0, "international_vs_local": 1.0,
-    },
-    {
-        "profile": "Strong GPA, no GRE reported",
-        "gpa": 3.90, "gre": np.nan, "gre_v": np.nan, "gre_aw": np.nan,
-        "ms_vs_phd": 1.0, "international_vs_local": 0.0,
-    },
-]
-
 # The six model inputs, in the exact order the network expects them.
 FEATURE_COLUMNS = [
     "gpa",
@@ -895,6 +862,40 @@ def plot_mse_curve(result, output_path=MSE_CURVE_PATH):
 # --------------------------------------------------------------------------- #
 # Section 7 - run the trained model on artificial applicants
 # --------------------------------------------------------------------------- #
+# Hand-written applicants used to probe what the model actually learned.
+# Values are on the raw scale (GPA out of 4.0, GRE on the 130-170 sections);
+# they run through exactly the same fill-and-standardize pipeline as real rows.
+# The last profile deliberately omits every GRE score, which is the common case
+# in this dataset, to show what median-filling does to a prediction.
+ARTIFICIAL_APPLICANTS = [
+    {
+        "profile": "Strong PhD, international",
+        "gpa": 3.95, "gre": 335.0, "gre_v": 165.0, "gre_aw": 5.0,
+        "ms_vs_phd": 1.0, "international_vs_local": 1.0,
+    },
+    {
+        "profile": "Strong PhD, local",
+        "gpa": 3.95, "gre": 335.0, "gre_v": 165.0, "gre_aw": 5.0,
+        "ms_vs_phd": 1.0, "international_vs_local": 0.0,
+    },
+    {
+        "profile": "Average Masters, local",
+        "gpa": 3.40, "gre": 305.0, "gre_v": 152.0, "gre_aw": 3.5,
+        "ms_vs_phd": 0.0, "international_vs_local": 0.0,
+    },
+    {
+        "profile": "Weak Masters, international",
+        "gpa": 2.90, "gre": 295.0, "gre_v": 145.0, "gre_aw": 3.0,
+        "ms_vs_phd": 0.0, "international_vs_local": 1.0,
+    },
+    {
+        "profile": "Strong GPA, no GRE reported",
+        "gpa": 3.90, "gre": np.nan, "gre_v": np.nan, "gre_aw": np.nan,
+        "ms_vs_phd": 1.0, "international_vs_local": 0.0,
+    },
+]
+
+
 def score_artificial_applicants(model, statistics):
     """Predict outcomes for the hand-written applicants in Section 7.
 
