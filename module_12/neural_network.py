@@ -170,7 +170,7 @@ def build_dataframe(records):
     # clobber a column the file already provides under the expected name.
     renames = {old: new for old, new in COLUMN_ALIASES.items()
                if old in frame.columns and new not in frame.columns}
-    frame = frame.rename(columns=renames)
+    frame.rename(columns=renames, inplace=True)
 
     # Keep only decided outcomes (drop Waitlisted / Interview) and only the two
     # degree types the model is meant to distinguish.
