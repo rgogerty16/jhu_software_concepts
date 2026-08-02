@@ -1,12 +1,12 @@
 # Module 12 Write-Up: A Two-Layer Neural Network for Admissions Prediction
 
-**Name:** Ryan Gogerty | **JHED:** rgogerty
-**Course:** EN.605.256 - Modern Software Concepts in Python
-**Assignment:** Module 12 - Neural Networks
+**Name:** Ryan Gogerty
+**Course:** EN.605.256, Modern Software Concepts in Python
+**Assignment:** Module 12, Neural Networks
 
 ## 1. What was built
 
-`neural_network.py` trains a fully connected 6 - 6 - 1 neural network, written
+`neural_network.py` trains a fully connected 6-6-1 neural network, written
 with NumPy only, to predict whether a graduate-school applicant was Accepted or
 Rejected. scikit-learn is used for exactly one thing, `train_test_split`; the
 forward pass, the backward pass, the loss, and the training loop are all hand
@@ -36,7 +36,7 @@ converted to floats; `ms_vs_phd` encodes PhD = 1 / Masters = 0;
 `international_vs_local` encodes International = 1 / Local or American = 0; and
 `target` encodes Accepted = 1 / Rejected = 0.
 
-Filtering left **24,326 of 30,000 rows** - 10,687 Accepted and 13,639 Rejected -
+Filtering left **24,326 of 30,000 rows** (10,687 Accepted and 13,639 Rejected),
 split into **19,460 training** and **4,866 test** rows.
 
 Every statistic used for filling and scaling was computed on the training split
@@ -60,7 +60,7 @@ international_vs_local        0.0000      0.4706      0.4991
 
 ### Network shapes
 
-`w1` is (6, 6) - one weight per (input feature, hidden unit) pair. `b1` is
+`w1` is (6, 6), one weight per (input feature, hidden unit) pair. `b1` is
 (1, 6), one bias per hidden unit. `w2` is (6, 1), one weight per (hidden unit,
 output unit). `b2` is (1, 1). Forty-nine parameters in total.
 
@@ -70,7 +70,7 @@ represent interactions a single linear layer could not. The output layer
 computes `a2 = sigmoid(a1 @ w2 + b2)`, one weighted summary of those blends
 squashed back into (0, 1). Because `a2` is bounded, rises with the evidence for
 acceptance, and is trained against 0/1 targets, it reads as a probability-like
-score - though MSE training leaves it uncalibrated, so it is not a literal
+score. MSE training leaves it uncalibrated, though, so it is not a literal
 admission probability.
 
 ## 2. Training printouts
@@ -135,9 +135,9 @@ consecutive epochs.
 Restored the parameters from epoch 5,939 (test MSE 0.207908).
 ```
 
-(Rows for epochs 4,100 - 4,400, 4,600 - 4,900, 5,100 - 5,400, and 5,600 - 5,800
-are omitted here only to keep the table readable; they appear in full in
-`training.log` and follow the same flat trend.)
+(Rows for epochs 4,100 through 4,400, 4,600 through 4,900, 5,100 through 5,400,
+and 5,600 through 5,800 are omitted here only to keep the table readable. They
+appear in full in `training.log` and follow the same flat trend.)
 
 ## 3. Final evaluation results
 
@@ -157,8 +157,8 @@ are omitted here only to keep the table readable; they appear in full in
 **Does it overfit?** No. Training MSE (0.206235) and test MSE (0.207908) sit
 0.0017 apart and fall together for the entire run, and the two curves in the
 graph below are nearly on top of each other. With 49 parameters against 19,460
-training rows the network has nowhere near the capacity to memorize the data -
-if anything it underfits. Early stopping still did its job: it ended a run that
+training rows the network has nowhere near the capacity to memorize the data.
+If anything it underfits. Early stopping still did its job: it ended a run that
 had flattened, and restored the parameters from epoch 5,939 rather than the
 drifting ones at 6,039.
 
@@ -174,9 +174,10 @@ holds flat over thousands of epochs. Accuracy moves in visible steps (0.5697 to
 predicted scores cross the 0.5 threshold, while the underlying MSE improves
 continuously.
 
-**Is the dataset sufficient for a realistic admissions predictor?** No - see the
-reflection. Six self-reported features, no program or institution, and roughly
-nine in ten rows missing every GRE score is not enough to model admissions.
+**Is the dataset sufficient for a realistic admissions predictor?** No, and the
+reflection goes into why. Six self-reported features, no program or institution,
+and roughly nine in ten rows missing every GRE score is not enough to model
+admissions.
 
 ## 4. Training and test MSE over time
 
@@ -190,7 +191,7 @@ is the visual signature of a model that is not overfitting.
 ## 5. Artificial applicant findings
 
 Five hand-written applicants were pushed through the identical pipeline used for
-real rows - missing values filled with the stored training medians, then
+real rows: missing values filled with the stored training medians, then
 standardized with the stored training means and standard deviations.
 
 | Profile | GPA | GRE | GRE V | GRE AW | PhD | Intl | Prob. | Status |
@@ -215,7 +216,7 @@ otherwise identical PhD applicants by 0.0197 (international lower). Both effects
 are an order of magnitude smaller than the Masters/PhD split.
 
 The fifth profile reports no GRE scores at all, which is the common case rather
-than the exception - about nine in ten real rows are missing them. It scores
+than the exception, since about nine in ten real rows are missing them. It scores
 0.3294, almost identical to the strong PhD local applicant at 0.3469, because
 median filling handed it the median GRE scores and its GPA advantage barely
 registers. In practice most predictions from this model rest on degree,
@@ -225,9 +226,9 @@ citizenship, and GPA whether or not test scores were supplied.
 
 **What is useful about implementing a neural network manually?** Writing the
 backward pass by hand makes the mechanics impossible to hand-wave. The chain
-rule becomes three concrete lines - the MSE derivative, the output sigmoid
+rule becomes three concrete lines (the MSE derivative, the output sigmoid
 derivative, then the same error carried back through `w2` and the hidden
-sigmoid - and the shape of every matrix has to be right or nothing runs. It also
+sigmoid), and the shape of every matrix has to be right or nothing runs. It also
 exposes decisions a framework hides. Two examples from this build: the test-set
 forward pass had to avoid the activation cache that backpropagation still needed
 (hence a separate `predict_proba` that recomputes rather than reusing
@@ -243,7 +244,7 @@ directly in this run. MSE paired with a sigmoid output gives vanishing gradients
 the update is multiplied by `a2 * (1 - a2)`, so a unit that is confidently wrong
 (near 0 or 1) learns slowest, exactly when it should learn fastest. That is
 visible in the 1,500-epoch plateau at the start of training, where the loss
-barely moves - cross-entropy, whose sigmoid derivative cancels, would have
+barely moves. Cross-entropy, whose sigmoid derivative cancels, would have
 escaped that plateau in a fraction of the epochs. MSE is also not a proper
 scoring rule for probabilities, so the outputs are pulled toward the middle of
 the range and cannot be read as calibrated admission odds. And the loss itself is
@@ -260,7 +261,7 @@ are the same row shape; no research experience, publications, or letters of
 recommendation; no funding status, which drives many PhD decisions; no
 application cycle, so a 2015 rejection is weighted like a 2026 one; and no
 undergraduate institution or major. The features that do exist are
-self-reported and unverified - this dataset holds GPAs above 4.0 (max 9.99),
+self-reported and unverified: this dataset holds GPAs above 4.0 (max 9.99),
 GRE scores on both the old and new scales (max 990), and a GRE AW score of
 99.99. Roughly 91% of rows have no GRE at all. On top of that, the whole corpus
 is self-selected: people post to Grad Cafe when they have news worth sharing,
