@@ -16,15 +16,21 @@ Run it with::
 """
 
 import argparse
+import dataclasses
 import json
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
+from sklearn.model_selection import train_test_split
 
 # --------------------------------------------------------------------------- #
 # Fixed configuration required by the assignment specification.
 # --------------------------------------------------------------------------- #
 DEFAULT_DATA_PATH = Path(__file__).with_name("applicant_data.json")
+
+RANDOM_SEED = 42
+TEST_SIZE = 0.2
 
 # The six model inputs, in the exact order the network expects them.
 FEATURE_COLUMNS = [
@@ -152,6 +158,143 @@ def report_dataset(frame, original_row_count):
     print(frame[FEATURE_COLUMNS + ["target"]].head().to_string(index=False))
 
 
+# --------------------------------------------------------------------------- #
+# Section 2 - split the data and preprocess it without leaking test information
+# --------------------------------------------------------------------------- #
+@dataclasses.dataclass
+class TrainingStatistics:
+    """Per-feature statistics learned from the training set only.
+
+    The same three vectors are reused to preprocess the test set and, later, the
+    artificial applicants, so that every input the model ever sees is measured
+    on one consistent scale.
+
+    Attributes:
+        medians: Median of each feature, used to fill missing values.
+        means: Mean of each feature after missing values were filled.
+        standard_deviations: Standard deviation of each feature, with any zero
+            replaced by 1 so that scaling never divides by zero.
+    """
+
+    medians: np.ndarray
+    means: np.ndarray
+    standard_deviations: np.ndarray
+
+
+def split_dataset(frame):
+    """Split the cleaned data into 80% training and 20% testing matrices.
+
+    This is the only place scikit-learn is used; the network itself is pure
+    NumPy.
+
+    Args:
+        frame: The cleaned DataFrame from :func:`build_dataframe`.
+
+    Returns:
+        Tuple ``(x_train, x_test, y_train, y_test)`` of NumPy arrays. The target
+        arrays are column vectors of shape ``(n_samples, 1)`` so they line up
+        with the network's single output unit.
+    """
+    features = frame[FEATURE_COLUMNS].to_numpy(dtype=float)
+    targets = frame["target"].to_numpy(dtype=float).reshape(-1, 1)
+
+    return train_test_split(
+        features,
+        targets,
+        test_size=TEST_SIZE,
+        random_state=RANDOM_SEED,
+        shuffle=True,
+    )
+
+
+def fill_missing_values(matrix, medians):
+    """Replace NaNs with the supplied per-column medians.
+
+    Args:
+        matrix: Feature matrix of shape ``(n_samples, n_features)``.
+        medians: Median of each feature, taken from the training set.
+
+    Returns:
+        A new matrix with no missing values.
+    """
+    return np.where(np.isnan(matrix), medians, matrix)
+
+
+def fit_training_statistics(x_train):
+    """Learn medians, means, and standard deviations from the training set.
+
+    Args:
+        x_train: Raw (unfilled, unscaled) training feature matrix.
+
+    Returns:
+        A :class:`TrainingStatistics` instance.
+    """
+    medians = np.nanmedian(x_train, axis=0)
+
+    # Means and standard deviations are measured after filling, so that the
+    # imputed rows are described by the same statistics used to scale them.
+    filled_train = fill_missing_values(x_train, medians)
+    means = filled_train.mean(axis=0)
+    standard_deviations = filled_train.std(axis=0)
+
+    # A constant feature would otherwise divide by zero; the assignment asks for
+    # a standard deviation of 1 in that case, which leaves the column unscaled.
+    standard_deviations[standard_deviations == 0.0] = 1.0
+
+    return TrainingStatistics(medians, means, standard_deviations)
+
+
+def preprocess_features(matrix, statistics):
+    """Fill missing values and standardize a feature matrix.
+
+    Args:
+        matrix: Raw feature matrix, possibly containing NaNs.
+        statistics: Training-set statistics from :func:`fit_training_statistics`.
+
+    Returns:
+        The filled and standardized matrix.
+    """
+    filled = fill_missing_values(matrix, statistics.medians)
+    return (filled - statistics.means) / statistics.standard_deviations
+
+
+def report_split(x_train, x_test, y_train, y_test, statistics):
+    """Print the Section 2 summary of the split and its preprocessing.
+
+    Args:
+        x_train: Training feature matrix.
+        x_test: Test feature matrix.
+        y_train: Training targets.
+        y_test: Test targets.
+        statistics: Training-set statistics used to preprocess both matrices.
+    """
+    print_banner("SECTION 2 - TRAIN/TEST SPLIT AND LEAKAGE-SAFE PREPROCESSING")
+    print(f"Training set size : {len(x_train):,} rows ({1 - TEST_SIZE:.0%})")
+    print(f"Test set size     : {len(x_test):,} rows ({TEST_SIZE:.0%})")
+    print(f"Split settings    : test_size={TEST_SIZE}, "
+          f"random_state={RANDOM_SEED}, shuffle=True")
+    print(f"Accepted share    : {y_train.mean():.4f} in train, "
+          f"{y_test.mean():.4f} in test")
+    print()
+    print("Training-set statistics (computed from the 80% training split only):")
+    print(f"{'feature':<24}{'median':>12}{'mean':>12}{'std':>12}")
+    for index, feature_name in enumerate(FEATURE_COLUMNS):
+        print(f"{feature_name:<24}"
+              f"{statistics.medians[index]:>12.4f}"
+              f"{statistics.means[index]:>12.4f}"
+              f"{statistics.standard_deviations[index]:>12.4f}")
+    print()
+    print("Why these statistics come from the training set only:")
+    print("  The test set stands in for applicants the model has never seen. If")
+    print("  the medians, means, and standard deviations were computed over the")
+    print("  full dataset, every test row would have contributed to the numbers")
+    print("  used to fill and scale the training rows - that is data leakage.")
+    print("  The reported test score would then be optimistic, because part of")
+    print("  the test set's information reached the model during training.")
+    print("  Fitting on the training split alone keeps the test set a genuinely")
+    print("  held-out estimate of performance on future applicants.")
+
+
 def parse_arguments():
     """Parse command-line arguments.
 
@@ -176,6 +319,13 @@ def main():
     records = load_applicant_records(arguments.data)
     frame = build_dataframe(records)
     report_dataset(frame, len(records))
+
+    # Section 2 - split first, then learn the preprocessing on the training half.
+    x_train_raw, x_test_raw, y_train, y_test = split_dataset(frame)
+    statistics = fit_training_statistics(x_train_raw)
+    x_train = preprocess_features(x_train_raw, statistics)
+    x_test = preprocess_features(x_test_raw, statistics)
+    report_split(x_train, x_test, y_train, y_test, statistics)
 
 
 if __name__ == "__main__":
