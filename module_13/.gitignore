@@ -2,3 +2,11 @@
 __pycache__/
 *.pyc
 .DS_Store
+
+# Artifacts from `python train_model.py --smoke`, which is a pipeline check
+# rather than a result worth committing. The real run writes the unsuffixed
+# names, so the two can never overwrite each other.
+model_smoke/
+training_smoke.log
+metrics_smoke.json
+*_smoke.png
