@@ -1,0 +1,82 @@
+{
+  "base_model": "distilbert-base-uncased",
+  "tokenizer": "distilbert-base-uncased",
+  "template_version": 1,
+  "max_length": 256,
+  "missing_placeholder": "Unknown",
+  "id2label": {
+    "0": "Rejected",
+    "1": "Accepted"
+  },
+  "label2id": {
+    "Rejected": 0,
+    "Accepted": 1
+  },
+  "positive_label": "Accepted",
+  "fields": {
+    "text": [
+      "program",
+      "university",
+      "comments"
+    ],
+    "categorical": [
+      "term",
+      "degree",
+      "us_or_international"
+    ],
+    "numeric": [
+      "gpa",
+      "gre",
+      "gre_v",
+      "gre_aw"
+    ]
+  },
+  "training": {
+    "epochs": 3,
+    "train_batch_size": 16,
+    "eval_batch_size": 32,
+    "learning_rate": 2e-05,
+    "weight_decay": 0.01,
+    "warmup_ratio": 0.1,
+    "max_grad_norm": 1.0,
+    "optimizer": "torch.optim.AdamW",
+    "random_seed": 42,
+    "device": "cpu",
+    "best_epoch": 3,
+    "wall_clock_seconds": 1753.6,
+    "torch_version": "2.13.0",
+    "transformers_version": "5.14.1"
+  },
+  "dataset": {
+    "original_rows": 30000,
+    "kept_statuses": [
+      "Accepted",
+      "Rejected"
+    ],
+    "dropped_undecided": 4807,
+    "dropped_duplicate_url": 0,
+    "dropped_unusable": 5869
+  },
+  "test_metrics": {
+    "count": 3865,
+    "accuracy": 0.8111254851228978,
+    "precision": 0.8155637254901961,
+    "recall": 0.75625,
+    "f1": 0.7847877358490566,
+    "f1_macro": 0.8082537111702637,
+    "confusion_matrix": [
+      [
+        1804,
+        301
+      ],
+      [
+        429,
+        1331
+      ]
+    ],
+    "majority_baseline": 0.5446313065976713,
+    "predicted_accepted_share": 0.4222509702457956,
+    "actual_accepted_share": 0.4553686934023286
+  },
+  "trained_at": "2026-08-06T15:20:41+00:00"
+}
