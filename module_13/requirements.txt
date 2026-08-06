@@ -1,0 +1,18 @@
+# Model training and inference
+torch>=2.5
+transformers>=4.46
+safetensors>=0.4
+
+# Data handling, splitting, and metrics
+numpy>=1.26
+pandas>=2.2
+scikit-learn>=1.4
+matplotlib>=3.9
+
+# Website
+flask>=3.1
+psycopg[binary]>=3.2
+
+# Write-up generation and static analysis
+fpdf2>=2.7
+pylint>=3.3
