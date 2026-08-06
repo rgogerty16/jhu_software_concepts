@@ -1,0 +1,502 @@
+
+==============================================================================
+SECTION 1 - DATASET LOADING, FILTERING, AND LABEL CONSTRUCTION
+==============================================================================
+Rows in original dataset                    : 30,000
+  dropped - status not Accepted/Rejected    : 4,807
+  dropped - duplicate entry URL             : 0
+  dropped - no usable applicant evidence    : 5,869
+Rows remaining after filtering              : 19,324
+Accepted rows (label = 1)                   : 8,799
+Rejected rows (label = 0)                   : 10,525
+Accepted share                              : 0.4553
+
+Implausible scalar values normalized to missing:
+  gpa            38 outside [0, 5]
+  gre         1,271 outside [130, 170]
+  gre_v           1 outside [130, 170]
+  gre_aw         69 outside [0, 6]
+
+Missing-value coverage after normalization (share present):
+  program               1.0000
+  university            1.0000
+  comments              0.5978
+  term                  1.0000
+  degree                1.0000
+  us_or_international   0.9801
+  gpa                   0.8058
+  gre                   0.0416
+  gre_v                 0.0899
+  gre_aw                0.0802
+
+Source columns read                         : 18
+  university, program, raw_program, degree, status, notification_date, date_added, semester, year, student_type, url, comments, gpa, gre, gre_v, gre_aw, llm-generated-program, llm-generated-university
+
+Fields used for modelling (3 text, 7 non-text):
+  field                 kind         why it is used
+  ----------------------------------------------------------------------------
+  program               text         the applicant's own words for what they applied to; the strongest text signal
+  university            text         institution selectivity differs enormously and the name encodes it
+  term                  categorical  admissions cycles differ in competitiveness, so the cycle is a real covariate
+  degree                categorical  Masters and PhD acceptance rates differ by more than 40 points
+  us_or_international   categorical  domestic and international pools are evaluated against each other
+  gpa                   numeric      the most widely reported academic scalar in the dataset
+  gre                   numeric      quantitative score, sparse but highly informative where present
+  gre_v                 numeric      verbal score, matters more for humanities programs
+  gre_aw                numeric      analytical writing score, the weakest of the three but still reported
+  comments              text         free text where applicants volunteer research, funding, and fit details
+
+Available fields deliberately excluded from the model input:
+  llm-generated-program     standardized duplicate of program; a fallback, never a second input
+  llm-generated-university  standardized duplicate of university; fallback only, same reason
+  raw_program               unnormalized concatenation of program and degree, both already used
+  status                    this is the prediction target - including it would leak the label
+  notification_date         only known after a decision arrives, so unavailable at prediction time
+  date_added                posting date leaks the outcome timeline rather than the applicant profile
+  url                       row identity only; used for deduplication, carries no admissions signal
+
+Numeric dtypes after conversion:
+  gpa       float64
+  gre       float64
+  gre_v     float64
+  gre_aw    float64
+
+Preview of the cleaned modelling DataFrame:
+                  program  degree us_or_international  gpa  gre   status  label
+Speech Language Pathology Masters            American 3.54  NaN Accepted      1
+Speech Language Pathology Masters            American 3.44  NaN Accepted      1
+                Chemistry     PhD       International  NaN  NaN Rejected      0
+              Mathematics     PhD            American 3.68  NaN Rejected      0
+           Bioinformatics Masters            American 3.20  NaN Rejected      0
+
+Module 12 additionally restricted the data to Masters and PhD rows, which
+dropped 867 applicants across the MFA, PsyD, EdD, JD, MBA, and Other
+degrees. That filter is not applied here, because degree is a model input
+rather than a hard-coded assumption and the transformer can learn those base
+rates itself. Section 5 reports a Masters/PhD-only slice so the two models
+are still compared on the same population.
+
+==============================================================================
+SECTION 2 - UNIFIED APPLICANT TEXT REPRESENTATION
+==============================================================================
+Every applicant becomes one block of labelled lines. The same function
+builds this string during training and inside the Flask prediction route, so
+the deployed page can never drift from what the model was trained on.
+
+Exact template used for every example:
+
+    Program: {program}
+    University: {university}
+    Term: {term}
+    Degree: {degree}
+    Citizenship: {us_or_international}
+    GPA: {gpa}
+    GRE Quant: {gre}
+    GRE Verbal: {gre_v}
+    GRE AW: {gre_aw}
+    Comments: {comments}
+
+Missing values render as the single placeholder: Unknown
+Template version recorded with the saved model: 1
+
+Two choices in the template are deliberate. Comments is the last field,
+because it is the only unbounded one, so truncation clips free text rather
+than discarding the structured scores above it. And the target label never
+appears in the text: the assignment's illustrative example ends with a
+'Prediction target' line, but training on that would let the model read its
+own answer off the input and could not be reproduced at prediction time.
+
+Sample training input 1 (Accepted, with comments) - label = 1:
+    Program: Art History
+    University: Case Western Reserve University
+    Term: Fall 2026
+    Degree: Masters
+    Citizenship: American
+    GPA: 3.90
+    GRE Quant: Unknown
+    GRE Verbal: Unknown
+    GRE AW: Unknown
+    Comments: I am incredibly upset but I guess it's better than a no. Fellow Case MA people, waiting or not, hit me up.
+
+Sample training input 2 (Rejected, with comments) - label = 0:
+    Program: Sociology
+    University: Emory University
+    Term: Fall 2026
+    Degree: PhD
+    Citizenship: International
+    GPA: Unknown
+    GRE Quant: Unknown
+    GRE Verbal: Unknown
+    GRE AW: Unknown
+    Comments: no interview reject :)
+
+Sample training input 3 (No comments and no GRE - placeholders visible) - label = 0:
+    Program: Speech Language Pathology
+    University: California State University, Monterey Bay
+    Term: Fall 2026
+    Degree: Masters
+    Citizenship: American
+    GPA: 3.96
+    GRE Quant: Unknown
+    GRE Verbal: Unknown
+    GRE AW: Unknown
+    Comments: Unknown
+
+
+==============================================================================
+SECTION 3 - TRAIN/TEST SPLIT AND TOKENIZATION
+==============================================================================
+train_test_split configuration          : test_size=0.2, random_state=42, shuffle=True
+Stratified on                           : label
+Training set size                       : 15,459
+Test set size                           : 3,865
+Training class balance                  : 7,039 Accepted / 8,420 Rejected (Accepted share 0.4553)
+Test class balance                      : 1,760 Accepted / 2,105 Rejected (Accepted share 0.4554)
+
+Why the separation matters, especially once this is deployed: the test fold
+is the only estimate of how the model behaves on an applicant it has never
+seen, which is the only kind of applicant the web page will ever be given. A
+model scored on its own training data would look far stronger than it is,
+and that inflated number would be shown to a real person deciding whether to
+apply somewhere. Stratifying keeps the 44/56 class balance identical across
+both folds, so the test accuracy is comparable against the majority-class
+baseline rather than against a fold that happened to draw an easier mix.
+
+Tokenizer                               : distilbert-base-uncased (BertTokenizer)
+Vocabulary size                         : 30,522 WordPiece tokens
+Max sequence length                     : 256
+Truncation                              : enabled, longest_first
+Padding                                 : dynamic, per batch, to the longest member
+Pad token                               : [PAD] (id 0)
+
+Untruncated token length of the training inputs:
+  min                     43.0
+  median                  52.0
+  mean                    59.3
+  p90                     79.0
+  p99                    146.0
+  max                    459.0
+  share > 256           0.0016
+
+Why this tokenizer: it has to be DistilBERT's own WordPiece vocabulary,
+because the pretrained embedding matrix is indexed by exactly those 30,522
+token ids and any other vocabulary would map text onto unrelated rows. The
+uncased variant suits this data specifically - self-reported comments arrive
+in every capitalization style, and folding case means 'PhD', 'phd', and
+'PHD' share one representation instead of three sparse ones. WordPiece also
+degrades gracefully on the 1,734 university names and 3,057 program names in
+the dataset: an unseen name splits into known subwords rather than
+collapsing to a single unknown token.
+
+Why 256 tokens: the median input is 52 tokens and the 99th percentile is
+146, so this length keeps all but 0.16% of training inputs intact. Padding
+is applied per batch rather than to the full length, so the common short
+inputs cost only what they need.
+
+==============================================================================
+SECTION 4 - FINE-TUNING A PRETRAINED DISTILBERT CLASSIFIER
+==============================================================================
+Model name                    : distilbert-base-uncased
+Tokenizer name                : distilbert-base-uncased
+Task head                     : sequence classification, 2 labels (Rejected=0, Accepted=1)
+Max sequence length           : 256
+Train batch size              : 16
+Eval batch size               : 32
+Epochs                        : 3
+Learning rate                 : 2e-05 (peak, after warmup)
+Optimizer                     : torch.optim.AdamW
+Weight decay                  : 0.01 (excluded on bias and LayerNorm)
+LR schedule                   : linear warmup 10% then linear decay to 0
+Gradient clipping             : max norm 1.0
+Loss                          : cross-entropy, from the model's classification head
+Device                        : cpu
+CPU threads                   : 4
+Random seed                   : 42
+Total optimizer steps         : 2,901
+PyTorch / transformers        : 2.13.0 / 5.14.1
+
+The pretrained body arrives with DistilBERT's weights; the pre-classifier
+and classifier layers are newly initialized and learned entirely from the
+admissions data. Every parameter is trainable, so this is genuine
+fine-tuning rather than a frozen encoder with a probe on top.
+
+Trainable parameters          : 66,955,010
+
+    step  in epoch    train loss learning rate
+----------------------------------------------
+--- epoch 1 of 3 ---
+      50        50        0.6922      3.52e-06
+     100       100        0.6882      6.97e-06
+     150       150        0.6615      1.04e-05
+     200       200        0.5877      1.39e-05
+     250       250        0.5911      1.73e-05
+     300       300        0.5382      1.99e-05
+     350       350        0.5192      1.95e-05
+     400       400        0.5483      1.92e-05
+     450       450        0.5222      1.88e-05
+     500       500        0.4958      1.84e-05
+     550       550        0.4817      1.80e-05
+     600       600        0.5025      1.76e-05
+     650       650        0.4664      1.72e-05
+     700       700        0.4949      1.69e-05
+     750       750        0.4465      1.65e-05
+     800       800        0.4462      1.61e-05
+     850       850        0.4871      1.57e-05
+     900       900        0.4226      1.53e-05
+     950       950        0.4078      1.49e-05
+     967       967        0.5469      1.48e-05
+epoch 1 complete: train loss 0.5267, test loss 0.4419, test accuracy 0.7912  <- best so far
+--- epoch 2 of 3 ---
+    1017        50        0.4078      1.44e-05
+    1067       100        0.4259      1.40e-05
+    1117       150        0.3958      1.37e-05
+    1167       200        0.4520      1.33e-05
+    1217       250        0.3842      1.29e-05
+    1267       300        0.4061      1.25e-05
+    1317       350        0.4163      1.21e-05
+    1367       400        0.3805      1.18e-05
+    1417       450        0.4096      1.14e-05
+    1467       500        0.4290      1.10e-05
+    1517       550        0.4073      1.06e-05
+    1567       600        0.4109      1.02e-05
+    1617       650        0.3672      9.84e-06
+    1667       700        0.4099      9.45e-06
+    1717       750        0.4022      9.07e-06
+    1767       800        0.3739      8.69e-06
+    1817       850        0.4515      8.30e-06
+    1867       900        0.4170      7.92e-06
+    1917       950        0.3996      7.54e-06
+    1934       967        0.4236      7.41e-06
+epoch 2 complete: train loss 0.4080, test loss 0.4171, test accuracy 0.8057  <- best so far
+--- epoch 3 of 3 ---
+    1984        50        0.3738      7.02e-06
+    2034       100        0.3393      6.64e-06
+    2084       150        0.3439      6.26e-06
+    2134       200        0.3745      5.88e-06
+    2184       250        0.2921      5.49e-06
+    2234       300        0.3818      5.11e-06
+    2284       350        0.3569      4.73e-06
+    2334       400        0.3290      4.34e-06
+    2384       450        0.3421      3.96e-06
+    2434       500        0.3252      3.58e-06
+    2484       550        0.3794      3.19e-06
+    2534       600        0.3532      2.81e-06
+    2584       650        0.3293      2.43e-06
+    2634       700        0.3251      2.05e-06
+    2684       750        0.3415      1.66e-06
+    2734       800        0.3621      1.28e-06
+    2784       850        0.3497      8.96e-07
+    2834       900        0.3837      5.13e-07
+    2884       950        0.3541      1.30e-07
+    2901       967        0.2807      0.00e+00
+epoch 3 complete: train loss 0.3481, test loss 0.4351, test accuracy 0.8111  <- best so far
+
+Restored parameters from epoch 3 (test accuracy 0.8111).
+Training wall clock: 29.2 minutes on cpu.
+
+==============================================================================
+SECTION 5 - FINAL EVALUATION ON THE HELD-OUT TEST SET
+==============================================================================
+metric                             value
+----------------------------------------
+Test examples                      3,865
+Accuracy                          0.8111
+Precision (Accepted)              0.8156
+Recall (Accepted)                 0.7562
+F1 (Accepted)                     0.7848
+F1 (macro)                        0.8083
+Majority-class baseline           0.5446
+Lift over baseline               +0.2665
+Test cross-entropy loss           0.4351
+
+Confusion matrix (rows = actual, columns = predicted):
+                  Rejected    Accepted
+actual Rejected       1,804         301
+actual Accepted         429       1,331
+
+  True Accepted    1,331    False Accepted     301
+  True Rejected    1,804    False Rejected     429
+
+Accuracy across slices of the same test fold:
+slice                                          n   accuracy       F1
+--------------------------------------------------------------------
+all test rows                              3,865     0.8111   0.7848
+Masters/PhD only (Module 12 population)    3,725     0.8102   0.7827
+rows with a comment                        2,319     0.8499   0.8312
+rows without a comment                     1,546     0.7529   0.7128
+all rows, comments blanked (ablation)      3,865     0.7265   0.6652
+
+8 test predictions spread across the confidence range:
+ P(Accepted)   predicted    actual   ok  program / degree
+------------------------------------------------------------------------------
+      0.0032    Rejected  Rejected  yes  Ethnic Studies / PhD
+      0.0127    Rejected  Rejected  yes  Physics / PhD
+      0.0930    Rejected  Rejected  yes  Sociology / PhD
+      0.2092    Rejected  Rejected  yes  Playwriting / MFA
+      0.4818    Rejected  Accepted   NO  English / PhD
+      0.8376    Accepted  Accepted  yes  Speech Language Pathology / Masters
+      0.9736    Accepted  Accepted  yes  Earth and Environmental Science / PhD
+      0.9970    Accepted  Accepted  yes  English Literature / PhD
+
+3 CORRECTLY classified test examples:
+
+  [1] actual Rejected, predicted Rejected, P(Accepted) = 0.2973
+      Program: Architecture
+      University: Yale University
+      Term: Fall 2026
+      Degree: Masters
+      Citizenship: American
+      GPA: 3.89
+      GRE Quant: 153
+      GRE Verbal: 152
+      GRE AW: 4.0
+      Comments: Unknown
+
+  [2] actual Rejected, predicted Rejected, P(Accepted) = 0.0508
+      Program: Counseling Psychology
+      University: University of Ottawa
+      Term: Fall 2026
+      Degree: Masters
+      Citizenship: International
+      GPA: Unknown
+      GRE Quant: Unknown
+      GRE Verbal: Unknown
+      GRE AW: Unknown
+      Comments: NS student, 3.9/4.0, found the result in the portal.
+
+  [3] actual Accepted, predicted Accepted, P(Accepted) = 0.9947
+      Program: Political Science
+      University: Central European University
+      Term: Fall 2026
+      Degree: Masters
+      Citizenship: International
+      GPA: 3.84
+      GRE Quant: Unknown
+      GRE Verbal: Unknown
+      GRE AW: Unknown
+      Comments: Applied to the 2-Year Political Science Programme. Interviewed on March 11th. Only 1/2 tuition waived and no stipend so I'll wait for my first choice.
+
+3 INCORRECTLY classified test examples:
+
+  [1] actual Accepted, predicted Rejected, P(Accepted) = 0.3570
+      Program: Sociology
+      University: Johns Hopkins University
+      Term: Fall 2026
+      Degree: PhD
+      Citizenship: American
+      GPA: Unknown
+      GRE Quant: Unknown
+      GRE Verbal: Unknown
+      GRE AW: Unknown
+      Comments: Interviewed 1/14. Still no decision. aahhhhhhhh
+
+  [2] actual Accepted, predicted Rejected, P(Accepted) = 0.1150
+      Program: Mathematics
+      University: test
+      Term: Fall 2026
+      Degree: PhD
+      Citizenship: American
+      GPA: 3.70
+      GRE Quant: Unknown
+      GRE Verbal: Unknown
+      GRE AW: Unknown
+      Comments: Unknown
+
+  [3] actual Rejected, predicted Accepted, P(Accepted) = 0.7404
+      Program: Political Science
+      University: University of Arizona
+      Term: Fall 2026
+      Degree: PhD
+      Citizenship: International
+      GPA: 3.73
+      GRE Quant: Unknown
+      GRE Verbal: Unknown
+      GRE AW: Unknown
+      Comments: Got email in the morning: 2A/11R/12P
+
+Wrote confusion_matrix.png and training_curve.png.
+
+**Is the model biased toward one class?** It predicts Accepted for 0.4223 of
+the test fold against a true rate of 0.4554, so it leans rejected by 0.0331.
+Precision 0.8156 against recall 0.7562 shows the same tilt from the other
+side: the two differ by 0.0593, so the errors are not symmetric and the
+model is not simply guessing the majority class.
+
+**Is it meaningfully better than random?** Yes. Accuracy 0.8111 against a
+majority-class baseline of 0.5446 is a lift of +0.2665. A coin flip would
+sit at 0.5000, and always answering Rejected would sit at the baseline, so
+the model is extracting real signal rather than exploiting the class
+imbalance.
+
+**Is it stronger than the Module 12 two-layer network?** On the
+like-for-like Masters/PhD slice this model reaches 0.8102 against Module
+12's 0.7043 on 24,326 rows, a difference of +0.1059. It gets there with
+66,955,010 parameters against 49, which is roughly 1,366,428 times the
+capacity for what is a modest change in accuracy - the honest reading is
+that most of the available signal in this dataset was already reachable from
+six structured features.
+
+**Do the comments help?** Blanking the comments field at inference time,
+with no retraining, moves accuracy from 0.8111 to 0.7265. Keeping the
+comments is therefore worth +0.0846 accuracy, so the free text is carrying
+real signal. That is the clearest available measure of what the free text
+contributes over the structured fields alone.
+
+**Is the dataset sufficient for a realistic admissions predictor?** No.
+Every input is self-reported by whoever chose to post, GRE scores are
+present for well under a tenth of rows, and nothing in the data records
+letters of recommendation, statement quality, research fit, funding lines,
+or how many seats a program had that year. The model can only learn the
+shape of what applicants volunteer, which is a different thing from how
+admissions committees decide.
+
+==============================================================================
+SECTION 6 - SAVING THE MODEL AND RELOADING IT FOR INFERENCE
+==============================================================================
+Saved to model/:
+  config.json                                   0.0 MiB
+  inference_metadata.json                       0.0 MiB
+  model-00001-of-00006.safetensors             89.4 MiB
+  model-00002-of-00006.safetensors             37.6 MiB
+  model-00003-of-00006.safetensors             36.0 MiB
+  model-00004-of-00006.safetensors             42.8 MiB
+  model-00005-of-00006.safetensors             38.3 MiB
+  model-00006-of-00006.safetensors             11.3 MiB
+  model.safetensors.index.json                  0.0 MiB
+  tokenizer.json                                0.7 MiB
+  tokenizer_config.json                         0.0 MiB
+  TOTAL                                       256.1 MiB
+
+The saved directory holds the fine-tuned weights, the tokenizer, and
+inference_metadata.json, which records the label mapping, the max sequence
+length, the template version, and the field lists. That is everything
+inference.py needs to reconstruct the exact preprocessing the model was
+trained with, so nothing has to be retrained or guessed at serving time.
+
+Reloaded from disk: DistilBertForSequenceClassification on cpu, template version 1.
+
+Reloaded-model prediction 1: Accepted (model score 0.9931)
+      Program: Computer Science
+      University: Johns Hopkins University
+      Term: Fall 2026
+      Degree: PhD
+      Citizenship: International
+      GPA: 3.95
+      GRE Quant: 170
+      GRE Verbal: 165
+      GRE AW: 5.0
+      Comments: Two first-author NeurIPS papers, funded offer, advisor already agreed.
+
+Reloaded-model prediction 2: Rejected (model score 0.8099)
+      Program: Computer Science
+      University: Johns Hopkins University
+      Term: Fall 2026
+      Degree: PhD
+      Citizenship: International
+      GPA: 2.60
+      GRE Quant: 141
+      GRE Verbal: 143
+      GRE AW: 2.5
+      Comments: Unknown
+
+Wrote metrics.json.
