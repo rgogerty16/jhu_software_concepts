@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block title %}Will You Get In? — Grad Café Analysis{% endblock %}
+
+{% block content %}
+<section class="intro">
+    <h1 class="page-title">Will You Get In?</h1>
+    <p>Enter an applicant profile and a fine-tuned DistilBERT model will guess whether
+    a Grad Café poster with that profile reported an acceptance or a rejection.</p>
+</section>
+
+{# The disclaimer sits above the form as well as beside the result, so it is
+   visible before anyone submits anything, not only afterwards. #}
+<section class="panel disclaimer">
+    <h2>Read this first</h2>
+    <p>{{ disclaimer }}</p>
+</section>
+
+{% if not model_ready %}
+<section class="panel db-warning">
+    <h2>The model has not been trained yet</h2>
+    <p>{{ model_error or "No fine-tuned model was found." }}</p>
+    <p class="footnote">Run <code>python train_model.py</code> to fine-tune and save the
+    model, then restart the app. The form below is still shown, but it cannot score a
+    profile until the model exists.</p>
+</section>
+{% endif %}
+
+{% if errors %}
+<section class="panel errors">
+    <h2>Please check these fields</h2>
+    <ul>
+        {% for message in errors %}<li>{{ message }}</li>{% endfor %}
+    </ul>
+    <p class="footnote">Every field is optional. Anything left blank is passed to the
+    model as <code>Unknown</code>, exactly as a missing value was during training.</p>
+</section>
+{% endif %}
+
+{% if prediction %}
+<section class="panel result-card {{ 'result-accepted' if prediction.label == 'Accepted'
+                                     else 'result-rejected' }}">
+    <h2>Model output</h2>
+    <p class="result-label">Prediction: <strong>{{ prediction.label }}</strong></p>
+    <p class="result-score">Model score: <strong>{{ "%.2f"|format(prediction.score) }}</strong></p>
+
+    <div class="score-bar" role="img"
+         aria-label="Modelled probability of acceptance: {{ prediction.accepted_percent }}%">
+        <div class="score-fill" style="width: {{ prediction.accepted_percent }}%"></div>
+    </div>
+    <p class="footnote">The bar shows P(Accepted) =
+        {{ "%.4f"|format(prediction.accepted_probability) }}. The model score above is its
+        confidence in whichever class it chose, so it is always at least 0.50.</p>
+
+    <table>
+        <thead><tr><th>Class</th><th>Probability</th></tr></thead>
+        <tbody>
+        {% for name, value in prediction.probabilities.items() %}
+            <tr class="{{ 'row-accepted' if name == 'Accepted' else 'row-rejected' }}">
+                <td>{{ name }}</td><td>{{ "%.4f"|format(value) }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    {# Showing the assembled input is the clearest possible evidence that the page
+       encodes a submission the same way training encoded a row. #}
+    <details class="model-input">
+        <summary>Show the exact text the model read</summary>
+        <pre>{{ prediction.model_input_text }}</pre>
+        <p class="footnote">Built by the same <code>applicant_text.build_applicant_text()</code>
+        used to construct every training example (template version
+        {{ prediction.template_version }}).</p>
+    </details>
+
+    <p class="footnote result-reminder">This is a class project model trained on scraped,
+    self-reported data. It is not an admissions decision.</p>
+</section>
+{% endif %}
+
+<section class="panel">
+    <h2>Applicant profile</h2>
+    <form method="post" action="{{ url_for('will_you_get_in') }}" class="predict-form">
+        <div class="form-grid">
+            <div class="form-field span-2">
+                <label for="program">Program</label>
+                <input type="text" id="program" name="program" value="{{ form.program }}"
+                       placeholder="Computer Science" autocomplete="off">
+                <span class="field-hint">The field or department you applied to.</span>
+            </div>
+
+            <div class="form-field span-2">
+                <label for="university">University</label>
+                <input type="text" id="university" name="university" value="{{ form.university }}"
+                       placeholder="Johns Hopkins University" autocomplete="off">
+                <span class="field-hint">Spelled out, as it would appear on Grad Café.</span>
+            </div>
+
+            <div class="form-field">
+                <label for="semester">Term</label>
+                <select id="semester" name="semester">
+                    {% for choice in semester_choices %}
+                    <option value="{{ choice }}"
+                        {{ 'selected' if form.semester == choice else '' }}>{{ choice }}</option>
+                    {% endfor %}
+                </select>
+                <span class="field-hint">Intake season.</span>
+            </div>
+
+            <div class="form-field">
+                <label for="year">Year</label>
+                <input type="text" id="year" name="year" value="{{ form.year }}"
+                       placeholder="2026" inputmode="numeric" autocomplete="off">
+                <span class="field-hint">Four digits, or blank.</span>
+            </div>
+
+            <div class="form-field">
+                <label for="degree">Degree type</label>
+                <select id="degree" name="degree">
+                    {% for choice in degree_choices %}
+                    <option value="{{ choice }}"
+                        {{ 'selected' if form.degree == choice else '' }}>{{ choice }}</option>
+                    {% endfor %}
+                </select>
+                <span class="field-hint">Masters and PhD outcomes differ sharply.</span>
+            </div>
+
+            <div class="form-field">
+                <label for="us_or_international">Citizenship</label>
+                <select id="us_or_international" name="us_or_international">
+                    {% for choice in citizenship_choices %}
+                    <option value="{{ choice }}"
+                        {{ 'selected' if form.us_or_international == choice else '' }}>
+                        {{ choice }}</option>
+                    {% endfor %}
+                </select>
+                <span class="field-hint">Domestic or international applicant pool.</span>
+            </div>
+
+            {# Rendered as type="text" rather than type="number" on purpose: the
+               browser's own number validation would intercept bad input before it
+               ever reached the server, and the server-side checks are the ones that
+               have to be correct. #}
+            {% for field, label, low, high in numeric_fields %}
+            <div class="form-field">
+                <label for="{{ field }}">{{ label }}</label>
+                <input type="text" id="{{ field }}" name="{{ field }}"
+                       value="{{ form[field] }}" inputmode="decimal" autocomplete="off"
+                       placeholder="{{ '%.1f'|format(low + (high - low) / 2) }}">
+                <span class="field-hint">{{ low }}–{{ high }}, or leave blank.</span>
+            </div>
+            {% endfor %}
+
+            <div class="form-field span-4">
+                <label for="comments">Comments</label>
+                <textarea id="comments" name="comments" rows="4"
+                    placeholder="Anything you would have posted alongside the result: research experience, publications, funding, interviews, fit with a specific advisor.">{{ form.comments }}</textarea>
+                <span class="field-hint">Optional. Blank is fine — over half the training
+                rows had no comment at all.</span>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary btn-predict">Predict my outcome</button>
+            <span class="field-hint">Every field is optional; blanks are sent to the model
+            as <code>Unknown</code>.</span>
+        </div>
+    </form>
+</section>
+{% endblock %}

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Grad Café Analysis{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="header-inner">
+            <h1>🎓 Grad Café Data Analysis</h1>
+            {# Module 5's header held two scraper action buttons and no way to move
+               between pages. Now that there is a second page, these are real
+               navigation links, with the current one marked so its position in the
+               site is obvious. #}
+            <nav class="nav-links">
+                <a href="{{ url_for('analysis') }}"
+                   class="{{ 'active' if active_page == 'analysis' else '' }}">Analysis</a>
+                <a href="{{ url_for('will_you_get_in') }}"
+                   class="{{ 'active' if active_page == 'predict' else '' }}">Will You Get In?</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <p>Data sourced from <a href="https://www.thegradcafe.com" target="_blank"
+           rel="noopener">The Grad Café</a> · Ryan Gogerty · JHU Software Concepts Module 13</p>
+    </footer>
+</body>
+</html>
