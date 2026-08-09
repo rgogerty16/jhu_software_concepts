@@ -1,4 +1,4 @@
-"""applicant_text.py — the unified applicant text representation.
+"""applicant_text.py: the unified applicant text representation.
 
 This module is deliberately the *only* place where an applicant record is turned
 into the string a language model reads. ``train_model.py`` imports it to build
@@ -21,7 +21,7 @@ Two design decisions are worth calling out, because both are deliberate:
 
 The two LLM-standardized fields available in the dataset
 (``llm-generated-program`` and ``llm-generated-university``) are intentionally
-**excluded** — see ``EXCLUDED_FIELDS``. A deployed form cannot reproduce them, so
+**excluded**; see ``EXCLUDED_FIELDS``. A deployed form cannot reproduce them, so
 training on them would create a train/serve skew where the model learned from a
 cleaned field that is only ever a duplicate of the user's raw typing in
 production.

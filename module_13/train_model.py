@@ -1,4 +1,4 @@
-"""train_model.py — fine-tune DistilBERT to predict graduate admissions outcomes.
+"""train_model.py: fine-tune DistilBERT to predict graduate admissions outcomes.
 
 Module 13 of EN.605.256. This script carries the whole training pipeline, laid out
 as the six numbered sections the assignment asks for so the printed transcript can
@@ -88,7 +88,7 @@ DEFAULT_MODEL_DIR = MODULE_DIR / "model"
 #: dataset whose inputs average well under 100 tokens.
 MODEL_NAME = "distilbert-base-uncased"
 
-#: The tokenizer must be the one DistilBERT was pretrained with — its 30,522-entry
+#: The tokenizer must be the one DistilBERT was pretrained with. Its 30,522-entry
 #: WordPiece vocabulary is what the embedding matrix is indexed by, so any other
 #: vocabulary would map text onto meaningless rows.
 TOKENIZER_NAME = MODEL_NAME
@@ -289,7 +289,7 @@ class RunConfig:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Section 1 — dataset loading, filtering, and label construction
+# Section 1: dataset loading, filtering, and label construction
 # ══════════════════════════════════════════════════════════════════════════════
 
 
@@ -632,7 +632,7 @@ def report_dataset(frame: pd.DataFrame, summary: DatasetSummary) -> None:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Section 2 — unified applicant text representation
+# Section 2: unified applicant text representation
 # ══════════════════════════════════════════════════════════════════════════════
 
 
@@ -698,7 +698,7 @@ def report_template(train_frame: pd.DataFrame) -> None:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Section 3 — train/test split and tokenization
+# Section 3: train/test split and tokenization
 # ══════════════════════════════════════════════════════════════════════════════
 
 
@@ -854,15 +854,15 @@ def report_tokenizer(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Section 4 — fine-tuning a pretrained DistilBERT classifier
+# Section 4: fine-tuning a pretrained DistilBERT classifier
 # ══════════════════════════════════════════════════════════════════════════════
 
 
 class ApplicantDataset(Dataset):
     """A torch dataset of tokenized applicant inputs and their labels.
 
-    Implements the three methods the framework requires — ``__init__``,
-    ``__len__``, and ``__getitem__`` — and pre-tokenizes in the constructor so no
+    Implements the three methods the framework requires (``__init__``,
+    ``__len__``, and ``__getitem__``) and pre-tokenizes in the constructor so no
     tokenization happens inside the training loop. Sequences are stored
     unpadded; the collator from :func:`make_collator` pads each batch to its own
     longest member.
@@ -1515,7 +1515,7 @@ def run_training(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Section 5 — final evaluation on the held-out test set
+# Section 5: final evaluation on the held-out test set
 # ══════════════════════════════════════════════════════════════════════════════
 
 
@@ -1931,7 +1931,7 @@ def report_evaluation(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Section 6 — saving the model and reloading it for inference
+# Section 6: saving the model and reloading it for inference
 # ══════════════════════════════════════════════════════════════════════════════
 
 
@@ -2001,8 +2001,8 @@ def save_bundle(
 
     Weights are sharded because the fp32 checkpoint is roughly 268 MB and GitHub
     refuses any single file over 100 MiB. Sharding cannot go below the largest
-    individual tensor — the 30,522 x 768 embedding matrix is about 90 MiB on its
-    own — so the first shard sits just under the limit and the rest are small.
+    individual tensor, and the 30,522 x 768 embedding matrix is about 90 MiB on its
+    own, so the first shard sits just under the limit and the rest are small.
 
     Args:
         bundle: The fine-tuned model.

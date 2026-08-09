@@ -1,10 +1,10 @@
-# Module 13 — Fine-Tuning DistilBERT and Deploying "Will You Get In?"
+# Module 13 Write-Up: Fine-Tuning DistilBERT and Deploying "Will You Get In?"
 
-**Ryan Gogerty**
+**Name:** Ryan Gogerty
 
-**EN.605.256 — Modern Software Concepts in Python**
+**Course:** EN.605.256, Modern Software Concepts in Python
 
-**Assignment: Module 13 — Scale & LM Deployment**
+**Assignment:** Module 13, Scale & LM Deployment
 
 Module 12 hand-built a two-layer network in NumPy over six structured features and
 reached 0.7043 test accuracy with 49 parameters. Its own write-up concluded that
@@ -13,13 +13,13 @@ the natural next step: fine-tune a pretrained transformer over the full applican
 record, text and structured fields together, and deploy it as a web page.
 
 It reaches **0.8111** on the held-out test set, against a 0.5446 majority-class
-baseline — a clear improvement over Module 12 on the same data. But the most useful
+baseline, a clear improvement over Module 12 on the same data. But the most useful
 thing this project produced is the reason that number is too flattering. Grad Café
 comments are written *after* a decision arrives, so many of them describe the
 outcome rather than the applicant. 39% of test rows contain a comment mentioning a
 rejection, an acceptance, or a funding offer, and on those rows the model scores
-0.8885. On inputs a real user of the web page could actually supply — nobody can
-describe a decision they have not received yet — it scores **0.7617**. That gap is
+0.8885. Nobody can describe a decision they have not received yet, so on the inputs
+a real user of the web page could actually supply it scores **0.7617**. That gap is
 the honest finding, and it is one a held-out test set cannot protect against.
 
 ## 1. Preprocessing decisions
@@ -53,7 +53,7 @@ Module 2 scraper was already deduplicating, rather than confirming the check was
 unnecessary.
 
 **"Enough usable information" is defined as a program name plus at least one piece
-of applicant-level evidence** — a GPA, any GRE score, or a comment. A row with a
+of applicant-level evidence**: a GPA, any GRE score, or a comment. A row with a
 program but no scores and no comment carries nothing beyond that program's base
 rate, so including it would teach the model base rates rather than anything about
 an individual applicant. This is the most aggressive of the three filters at 5,869
@@ -78,9 +78,9 @@ produces exactly the string a training row with no GPA produced.
 This was the source of the one real bug found during development. Values taken
 straight off a pandas row are `NaN`, not `None`, and an early version checked only
 for `None`. Every training example with a missing GPA rendered as `GPA: nan` while
-the web form rendered `GPA: Unknown` for the same applicant — a train/serve skew
-introduced by the very code meant to prevent it. The fix was a single `is_missing`
-helper that tests both, used by both paths.
+the web form rendered `GPA: Unknown` for the same applicant. That is a train/serve
+skew introduced by the very code meant to prevent it. The fix was a single
+`is_missing` helper that tests both, used by both paths.
 
 ### Converting numeric columns and rejecting implausible values
 
@@ -130,8 +130,8 @@ The remaining two are the interesting case. `llm-generated-program` and
 in the input, and it is tempting to add them. They were excluded because **a web
 form cannot reproduce them.** Training on a standardized field that only ever
 appears at inference time as a duplicate of the user's raw typing would create a
-train/serve skew — the model would learn from a signal that does not exist in
-production. They are retained only as fallbacks for the Postgres path, whose
+train/serve skew, because the model would learn from a signal that does not exist
+in production. They are retained only as fallbacks for the Postgres path, whose
 `applicants` table stores no raw `university` column at all.
 
 One consequence worth stating plainly: unlike Module 12, **no Masters/PhD filter is
@@ -254,7 +254,7 @@ the entire point of fine-tuning. The `uncased` variant suits this data specifica
 self-reported comments arrive in every capitalization style, and folding case means
 `PhD`, `phd`, and `PHD` share one representation instead of three sparse ones.
 WordPiece also degrades gracefully on the 1,734 university names and 3,057 program
-names in the dataset — an unseen name splits into known subwords rather than
+names in the dataset: an unseen name splits into known subwords rather than
 collapsing to a single unknown token, which is what makes the deployed form usable
 for a program the model never saw.
 
@@ -276,7 +276,7 @@ measured distribution does not require it: a limit of 160 would have covered the
 recommended baseline and it leaves headroom for the long comments a web user might
 paste, which are exactly the inputs the training data under-represents. Padding is
 applied per batch rather than to the full 256, so the short and common inputs cost
-only what they need — a decision that turned out to have a significant and
+only what they need. That decision turned out to have a significant and
 unexpected consequence, discussed in Section 4.
 
 ## 4. Training configuration
@@ -315,7 +315,7 @@ because the tokenizer emits `token_type_ids`, which DistilBERT's forward signatu
 does not accept, and the batch has to be assembled from exactly the three keys the
 model wants. The classification head arrives randomly initialized and is learned
 entirely from the admissions data, while every pretrained parameter is also
-trainable — this is genuine fine-tuning, not a frozen encoder with a probe on top.
+trainable. This is genuine fine-tuning, not a frozen encoder with a probe on top.
 
 **Warmup matters here.** The classification head starts random, so a full learning
 rate on step one would push large, meaningless gradients back through the pretrained
@@ -334,7 +334,7 @@ from Module 12. The final epoch is not automatically the best one.
 The intended device was Apple's Metal backend, which is available on the machine
 this was developed on, and a 2,000-row pipeline check ran on it without incident.
 The full 15,459-row run then hung. The process slept for thirteen minutes while
-accumulating no CPU time at all — not slow, stopped.
+accumulating no CPU time at all. Not slow, stopped.
 
 Sampling the process showed it wedged inside Apple's Metal shader compiler:
 
@@ -442,7 +442,7 @@ which shows it uses the whole range rather than only answering with near-certain
       0.9970    Accepted  Accepted  yes  English Literature / PhD
 ```
 
-The single error in that sample sits at 0.4818 — almost exactly the decision
+The single error in that sample sits at 0.4818, almost exactly the decision
 boundary, which is where an honest model should be wrong.
 
 ### Correctly and incorrectly classified examples
@@ -523,7 +523,7 @@ know the outcome, so they cannot describe it. The headline 0.8111 is inflated by
 5 points of accuracy that will not transfer.
 
 This was not scrubbed from the training data, and that is a defensible choice rather
-than an oversight — the assignment specifies the comments field as an input, and
+than an oversight: the assignment specifies the comments field as an input, and
 removing outcome language reliably would mean hand-auditing 11,551 free-text comments.
 What was not defensible was leaving it unmeasured. The requirement not to leak the
 label is satisfied in the strict sense: `status` never enters the input, and the
@@ -542,7 +542,7 @@ the more harmful direction: it discourages more often than it falsely encourages
 majority-class baseline is a lift of +0.2665, and a coin flip would sit at 0.5000.
 Even the conservative deployment estimate of 0.7617 clears its baseline by +0.2223.
 
-**Is it stronger than the Module 12 two-layer network?** Yes — see Section 6.
+**Is it stronger than the Module 12 two-layer network?** Yes. See Section 6.
 
 **Is the dataset sufficient for a realistic admissions predictor?** No, and the
 leakage analysis is the sharpest reason why. The single most predictive thing about a
@@ -564,7 +564,7 @@ information that actually decides admissions.
 | Training time | ~9 seconds | 29.2 minutes |
 | Artifact size | a few KB | 256 MiB |
 
-On the Masters/PhD slice — the population Module 12 actually trained on — this model
+On the Masters/PhD slice (the population Module 12 actually trained on) this model
 scores 0.8102, against Module 12's 0.7043. That is **+0.106**, and it holds up on the
 like-for-like comparison rather than depending on the wider row selection.
 
@@ -576,7 +576,7 @@ training median substituted in its place. This model reads program and universit
 names as language, so an unseen program still decomposes into meaningful subwords; it
 reads comments; and it sees `Unknown` as a token in its own right, so "did not report
 a GRE" is information rather than an imputed guess. That last difference is quietly
-significant, because missingness in this dataset is not random — applicants with weak
+significant, because missingness in this dataset is not random: applicants with weak
 scores omit them.
 
 **Does the text help?** Substantially, and more than the structured fields. Blanking
@@ -599,7 +599,7 @@ modelling problems, and none of them would appear in an accuracy table.
 
 **Is the added complexity justified?** For this assignment, yes, with a caveat.
 +0.106 accuracy on the same population is not a rounding error, and the capability
-that produced it — reading free text at all — is not available at any number of
+that produced it, reading free text at all, is not available at any number of
 NumPy parameters. But it costs 1.37 million times the parameters, 195 times the
 training time, and roughly 50,000 times the artifact size for that gain, and about
 half the gain evaporates under audit. If the goal were a deployable admissions-chance
@@ -613,7 +613,7 @@ than the architecture.
 
 The admissions dataset contains 19,324 usable rows. Training a transformer from
 random initialization on 19,324 short documents would produce something with no
-useful command of English at all — it would spend its capacity discovering that
+useful command of English at all. It would spend its capacity discovering that
 "GPA" is a token that precedes a number, rather than learning anything about
 admissions. Fine-tuning inverts the problem. DistilBERT already arrives knowing how
 English sentences are put together, that "publication" and "paper" are related, and
@@ -634,7 +634,7 @@ present in only 60% of rows and is written to whatever standard the poster felt 
 Serializing both into one string lets a single pretrained model attend across them,
 so `Degree: PhD` and `Comments: externally funded` can inform each other without
 anyone hand-engineering an interaction term. On this dataset the text contributes a
-great deal — 8.5 points of accuracy — but Section 5 shows that a substantial part of
+great deal (8.5 points of accuracy), but Section 5 shows that a substantial part of
 that comes from comments describing the outcome rather than the applicant. The
 lesson is not that combining modalities failed. It is that a text field's value has
 to be audited for *what kind* of information it carries, which is a question a single
@@ -658,7 +658,7 @@ invisible in the data.
 
 **Unverified self-report.** Nothing is checked. GPAs are rounded up, scales are
 confused, and the 1,271 GRE values on the retired 200-800 scale are the visible tip
-of that — the invisible errors are the ones inside plausible ranges.
+of that. The invisible errors are the ones inside plausible ranges.
 
 **Missingness that is not random.** An applicant with a weak GRE simply omits it. So
 `GRE Quant: Unknown` is not a neutral absence; it carries information about the
@@ -674,7 +674,7 @@ Beyond the data, the failure modes are structural.
 
 The model reads `Citizenship: International` and `University: <name>` as ordinary
 features. Because international acceptance rates in this dataset are genuinely lower,
-the model will learn to lower an applicant's score for being international — and will
+the model will learn to lower an applicant's score for being international, and will
 present that as a prediction about them personally rather than a summary of an
 aggregate pattern. The same applies to any program with a low posted acceptance rate.
 A model that reproduces a historical disparity and reports it as an individual
@@ -690,7 +690,7 @@ training comments contain language describing an outcome, and the model learned 
 read it: on test rows with such language it scores 0.8885, and on rows without it
 0.7617. A prospective applicant is always in the second group, because the whole
 premise of asking is not knowing. So the model is systematically weaker in deployment
-than any number computed on the test set suggests — not because the test set was
+than any number computed on the test set suggests, not because the test set was
 constructed wrongly, but because a feature encoded the answer and a train/test split
 has no mechanism for noticing that. Reporting the headline figure to a user would be
 a quiet form of overclaiming.
@@ -706,7 +706,7 @@ is not a hard problem so much as an underdetermined one.
 
 ### Should a model like this be used in real decisions?
 
-No — in either direction.
+No, in either direction.
 
 It should not be used by programs to screen applicants. It is fitted to unverified
 self-reports, it encodes demographic and institutional disparities as predictive
@@ -725,8 +725,8 @@ the output now looks more authoritative.
 
 The design of the deployed page reflects that concern rather than only mentioning it.
 The disclaimer appears above the form, before anything is submitted, and again beside
-the result, and it states specifically what the training data is — voluntarily
-posted, unverified, self-reported — rather than offering a generic caveat. The result
+the result, and it states specifically what the training data is (voluntarily
+posted, unverified, self-reported) rather than offering a generic caveat. The result
 shows both class probabilities rather than the winning one alone, so a 0.52 cannot be
 mistaken for a verdict. The exact text the model read is exposed in a collapsible
 panel, which makes it obvious how thin the input actually is; seeing four `Unknown`
@@ -746,7 +746,7 @@ assignment in the course where every layer is present at once and has to agree: 
 scraper's output feeds a database, feeds a preprocessing template, feeds a
 tokenizer, feeds a fine-tuned transformer, feeds a saved artifact, feeds a Flask
 route, feeds an HTML form. The bugs that mattered lived in the seams rather than in
-any one layer — a pandas `NaN` rendering as the string `nan` on the training path
+any one layer: a pandas `NaN` rendering as the string `nan` on the training path
 while the form path rendered `Unknown` for the same applicant, and a Metal shader
 compiler deadlocking on the very batching decision that made training fast. Neither
 is visible from inside a single component, and neither shows up in a model's accuracy

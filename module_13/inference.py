@@ -1,4 +1,4 @@
-"""inference.py — load the fine-tuned admissions model and score applicants.
+"""inference.py: load the fine-tuned admissions model and score applicants.
 
 This is the serving side of Module 13. It reloads the model saved by
 ``train_model.py`` and turns applicant records into predictions, and it is the
@@ -222,7 +222,7 @@ def predict_applicants(
     """Score a batch of applicant records.
 
     Args:
-        records: Applicant mappings, in any shape ``normalize_record`` accepts —
+        records: Applicant mappings, in any shape ``normalize_record`` accepts:
             raw scraped JSON, a database row, or submitted form values.
         bundle: A preloaded bundle, or None to use the default cached one.
 

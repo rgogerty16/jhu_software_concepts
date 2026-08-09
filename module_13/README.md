@@ -1,9 +1,9 @@
-# Module 13 — Fine-Tuning DistilBERT and Deploying "Will You Get In?"
+# Module 13: Fine-Tuning DistilBERT and Deploying "Will You Get In?"
 
 - **Name:** Ryan Gogerty
 - **JHED:** rgogerty1
-- **Course:** EN.605.256 — Modern Software Concepts in Python
-- **Assignment:** Module 13 — Scale & LM Deployment
+- **Course:** EN.605.256, Modern Software Concepts in Python
+- **Assignment:** Module 13, Scale & LM Deployment
 
 A pretrained DistilBERT language model, fine-tuned on the Grad Café admissions
 dataset collected earlier in the semester, and served from a new page on the
@@ -11,7 +11,7 @@ Module 5 Flask website.
 
 Where Module 12 hand-built a two-layer network in NumPy over six structured
 features, this module fine-tunes 67 million pretrained parameters over the **full
-applicant record** — free text and structured fields together — and deploys the
+applicant record**, free text and structured fields together, and deploys the
 result as an interactive web page.
 
 > **This is coursework, not an admissions tool.** The model is fitted to roughly
@@ -33,9 +33,9 @@ result as an interactive web page.
 3. **Splits 80/20 and tokenizes.** A stratified `train_test_split` with
    `test_size=0.2`, `random_state=42`, `shuffle=True`, then DistilBERT's own
    WordPiece tokenizer with truncation at 256 tokens and dynamic per-batch padding.
-4. **Fine-tunes DistilBERT.** A hand-written PyTorch training loop — custom
+4. **Fine-tunes DistilBERT.** A hand-written PyTorch training loop (custom
    `Dataset`, `DataLoader`, AdamW, a linear warmup-and-decay schedule, gradient
-   clipping — rather than the Hugging Face `Trainer`, so every part of the loop is
+   clipping) rather than the Hugging Face `Trainer`, so every part of the loop is
    visible. The best epoch's parameters are kept, not the last.
 5. **Evaluates on the held-out test set.** Accuracy, precision, recall, F1, and a
    confusion matrix, plus class distributions, worked probability examples,
@@ -57,7 +57,7 @@ result as an interactive web page.
 | `inference.py` | Loads the saved model once and scores applicants; also a standalone two-example demo |
 | `leakage_analysis.py` | Measures how much of the model's skill comes from comments that describe the outcome |
 | `leakage_analysis.txt` | Output of that analysis for the committed model |
-| `applicant_text.py` | The unified text template — the single source shared by training and serving |
+| `applicant_text.py` | The unified text template, the single source shared by training and serving |
 | `run.py` | Starts the Flask website |
 | `app/__init__.py` | Flask app factory, routes, and form validation |
 | `app/db.py`, `app/query_data.py` | Postgres helpers carried over from Module 5, used by `/analysis` |
@@ -113,7 +113,7 @@ check can never overwrite the committed run.
 > (`MPSGraphExecutable specializeWithDevice:` → `optimizeOriginalModule`), sleeping
 > indefinitely while accumulating no CPU time. Dynamic padding gives each batch a
 > distinct tensor shape, every new shape triggers a fresh Metal graph compilation,
-> and a long run produces far more shapes than a short one — which is why the
+> and a long run produces far more shapes than a short one, which is why the
 > 2,000-row check passed and the 15,000-row run hung. CPU is slower per step but
 > finishes every time. The write-up discusses this at more length.
 
@@ -123,7 +123,7 @@ check can never overwrite the committed run.
 python inference.py
 ```
 
-Reloads `model/` in a fresh process — no retraining — and scores two contrasting
+Reloads `model/` in a fresh process, with no retraining, and scores two contrasting
 applicants, printing the exact text the model read, the predicted class, and the
 probabilities.
 
@@ -135,8 +135,8 @@ python run.py
 
 Then open <http://127.0.0.1:5000>:
 
-- **`/will-you-get-in`** — the prediction page. Needs no database.
-- **`/analysis`** — the Module 5 SQL analysis page. Needs PostgreSQL with the
+- **`/will-you-get-in`**: the prediction page. Needs no database.
+- **`/analysis`**: the Module 5 SQL analysis page. Needs PostgreSQL with the
   `gradcafe` database and its `applicants` table. If Postgres is not running the
   page explains that and stays navigable; the predictor is unaffected.
 
@@ -156,19 +156,19 @@ python make_writeup.py
 
 ## Outputs produced
 
-- `training.log` — the complete transcript, rewritten on each run
-- `metrics.json` — accuracy, precision, recall, F1, and the confusion matrix, for
+- `training.log`: the complete transcript, rewritten on each run
+- `metrics.json`: accuracy, precision, recall, F1, and the confusion matrix, for
   the whole test fold and for each reported slice
-- `confusion_matrix.png` — the test confusion matrix
-- `training_curve.png` — training loss per logged step, and test accuracy and loss
+- `confusion_matrix.png`: the test confusion matrix
+- `training_curve.png`: training loss per logged step, and test accuracy and loss
   per epoch
-- `model/` — the reloadable fine-tuned model
+- `model/`: the reloadable fine-tuned model
 
 ## Results from the committed run
 
 | Metric | Value |
 | --- | --- |
-| Modelling rows (after filtering) | 19,324 — 8,799 Accepted / 10,525 Rejected |
+| Modelling rows (after filtering) | 19,324 (8,799 Accepted / 10,525 Rejected) |
 | Train / test | 15,459 / 3,865, stratified |
 | Epochs / best epoch | 3 / 3 |
 | Training wall clock | 29.2 minutes on CPU |
@@ -183,7 +183,7 @@ python make_writeup.py
 
 That last row is the number worth taking seriously, and it is the most important
 result in the project. Grad Café comments are written *after* a decision arrives, so
-64% of them contain language describing an outcome — "Rejected on May 26", "Accepted
+64% of them contain language describing an outcome: "Rejected on May 26", "Accepted
 off of waitlist". The model learned to read it: it scores 0.8885 on test rows with
 such language and 0.7617 on rows without. Anyone using the prediction page is
 necessarily in the second group, since they are asking precisely because they do not

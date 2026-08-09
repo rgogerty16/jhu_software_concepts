@@ -1,4 +1,4 @@
-"""run.py — start the Grad Café website with the "Will You Get In?" predictor.
+"""run.py: start the Grad Café website with the "Will You Get In?" predictor.
 
 Usage::
 

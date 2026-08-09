@@ -1,4 +1,4 @@
-"""app package — the Grad Café Flask site, extended with an admissions predictor.
+"""app package: the Grad Café Flask site, extended with an admissions predictor.
 
 This is the Module 5 analysis website with a second page added: **Will You Get
 In?**, which collects an applicant profile and scores it with the DistilBERT
@@ -28,7 +28,7 @@ Three things about how this is wired are deliberate:
 
 The Module 5 scraper machinery (``/pull-data``, ``/pull-status``,
 ``/update-analysis``, and the Selenium subprocess behind them) is deliberately
-not carried over — this assignment never exercises it, and dropping it keeps
+not carried over, because this assignment never exercises it, and dropping it keeps
 Selenium, BeautifulSoup, and webdriver-manager out of ``requirements.txt``.
 """
 
@@ -106,7 +106,7 @@ def parse_year(raw: str, errors: list[str]) -> str | None:
 def parse_numbers(form, errors: list[str]) -> dict[str, float | None]:
     """Validate the four scalar fields.
 
-    Blank is always acceptable and means "not reported" — the model was trained on
+    Blank is always acceptable and means "not reported", and the model was trained on
     a dataset where most rows were missing at least one of these. Anything that is
     neither blank nor a plausible number produces a message naming the field and
     its range, and the form is re-rendered rather than the request failing.
@@ -215,10 +215,10 @@ def create_app(config: dict | None = None) -> Flask:
         try:
             results = run_queries(database_url=app.config["DATABASE_URL"])
         except Exception as error:  # pylint: disable=broad-except
-            # Any database problem — server down, missing table, bad credentials —
-            # must leave the site usable and must not put a traceback in front of
-            # a user. The message names the cause without echoing connection
-            # details back to the browser.
+            # Any database problem, whether the server is down, the table is
+            # missing, or the credentials are wrong, must leave the site usable
+            # and must not put a traceback in front of a user. The message names
+            # the cause without echoing connection details back to the browser.
             db_error = type(error).__name__
             app.logger.warning("Analysis queries failed: %s: %s", db_error, error)
         return render_template(

@@ -1,9 +1,9 @@
-"""db.py — shared database connection helper for the Module 13 website.
+"""db.py: shared database connection helper for the Module 13 website.
 
 Carried over from Module 5, with one behavioural change that matters here.
 
 Module 5's ``_build_url()`` read ``DB_USER`` and ``DB_PASSWORD`` with
-``os.environ[...]``, so it raised ``KeyError`` when they were unset — and
+``os.environ[...]``, so it raised ``KeyError`` when they were unset, and
 ``create_app()`` called it eagerly, meaning an unconfigured environment took the
 entire site down at startup. In this module the analysis page is no longer the
 only page: the "Will You Get In?" predictor does not touch Postgres at all, and
@@ -14,11 +14,11 @@ connection failure is handled at query time by the route instead.
 
 Resolution order:
 
-1. An explicit ``database_url`` argument — used by the app config and tests.
+1. An explicit ``database_url`` argument, used by the app config and tests.
 2. ``DATABASE_URL`` in the environment.
 3. Individual ``DB_USER`` / ``DB_PASSWORD`` / ``DB_HOST`` / ``DB_PORT`` /
    ``DB_NAME`` variables, when a user is set.
-4. ``postgresql:///gradcafe`` — a local peer-authenticated socket connection.
+4. ``postgresql:///gradcafe``, a local peer-authenticated socket connection.
 """
 
 import os

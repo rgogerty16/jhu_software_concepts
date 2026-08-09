@@ -1,4 +1,4 @@
-"""leakage_analysis.py — how much of the model's skill is reading the answer?
+"""leakage_analysis.py: how much of the model's skill is reading the answer?
 
 Section 5 of ``train_model.py`` shows that keeping the comments field is worth
 about 8 points of accuracy. This script asks a harder question about *why*, and it
