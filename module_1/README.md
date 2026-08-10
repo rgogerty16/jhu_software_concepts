@@ -43,7 +43,8 @@ module_1/
 ├── run.py                        entry point, serves on port 8080
 ├── requirements.txt
 ├── screenshots/
-│   └── projects_page.png         the finished portfolio page
+│   └── projects_page_1_of_5.png  the finished portfolio page, top to bottom
+│       ... through _5_of_5.png   (five captures, the page is long)
 └── app/
     ├── __init__.py               create_app() factory, registers 3 blueprints
     ├── data/projects.json        portfolio content
