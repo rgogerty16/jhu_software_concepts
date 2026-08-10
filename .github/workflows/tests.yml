@@ -21,8 +21,18 @@ name: Pytest + Coverage
 on:
   push:
     branches: [ main ]
+    # Path filter added in the final revision pass. Without it this workflow ran
+    # Module 4's suite, and spun up a Postgres service to do it, on every commit
+    # to any module in the repository, including commits that touch no Python at
+    # all. Modules 5 and 6 already filtered this way; Module 4 did not.
+    paths:
+      - 'module_4/**'
+      - '.github/workflows/tests.yml'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'module_4/**'
+      - '.github/workflows/tests.yml'
 
 jobs:
   test:

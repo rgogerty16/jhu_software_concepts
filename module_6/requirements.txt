@@ -1,0 +1,29 @@
+# Module 6 combined dependencies.
+#
+# Module 6 runs as four Docker services, so each image installs only what it
+# needs and those narrow files remain the ones the Dockerfiles use:
+#   src/web/requirements.txt      Flask front end, RabbitMQ publisher, read-side SQL
+#   src/worker/requirements.txt   RabbitMQ consumer and ETL, no Flask
+#
+# This file is for working on the module outside the containers: running the test
+# suite, the lint gate, or the report generator on a local machine. It previously
+# did not exist, which meant the pylint and pytest gates depended on packages the
+# CI workflow installed ad hoc, and nothing recorded that make_report_pdf.py needs
+# fpdf2 at all.
+
+# Application, matching src/web and src/worker
+flask==3.1.0
+psycopg[binary]==3.3.4
+pika==1.3.2
+
+# Testing, the versions .github/workflows/module_6.yml installs by hand
+pytest==8.3.5
+pytest-cov==6.1.0
+
+# Static analysis, the version the CI lint job pins
+pylint==3.3.7
+
+# Report generation
+# make_report_pdf.py imports fpdf but this was never declared anywhere, so
+# module_6_report.pdf could not be rebuilt from a clean checkout.
+fpdf2>=2.7

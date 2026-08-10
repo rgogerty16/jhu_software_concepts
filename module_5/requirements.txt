@@ -17,3 +17,8 @@ sphinx-rtd-theme==3.0.2
 # Static analysis + dependency visualization
 pylint==3.3.7
 pydeps==1.12.20
+
+# Report generation
+# make_report_pdf.py imports fpdf but this was never declared, so
+# module_5_report.pdf could not be rebuilt from a clean checkout.
+fpdf2>=2.7
