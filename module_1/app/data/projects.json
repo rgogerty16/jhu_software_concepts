@@ -1,0 +1,122 @@
+{
+  "intro": "Every project below was built for EN.605.256 Modern Software Concepts in Python. They are not thirteen unrelated exercises: Module 2 scrapes 30,000 graduate admissions records from The Grad Cafe, and almost everything after it works on that same dataset, through a relational database, a tested and hardened web application, a container stack, AWS, statistics, clustering, experiment tracking, and finally two neural networks. Each block links to its folder in the course repository.",
+  "projects": [
+    {
+      "module": 1,
+      "title": "Personal Flask Website",
+      "overview": "A three-page personal site built with Flask, using an application factory and one blueprint per page. Home, Contact, and Projects share a single Jinja layout with custom CSS.",
+      "github_url": "https://github.com/rgogerty16/jhu_software_concepts/tree/main/module_1",
+      "learned": "Blueprints and template inheritance turned what would have been three near-identical HTML files into one layout plus three small route modules, which was the first time structure paid off for me instead of just adding files.",
+      "tech": ["Flask", "Jinja2", "CSS"],
+      "highlight": "Now renders this portfolio page from JSON rather than hard-coded HTML"
+    },
+    {
+      "module": 2,
+      "title": "Web Scraping with Local LLM Cleaning",
+      "overview": "Scrapes graduate admissions results from The Grad Cafe with Selenium and BeautifulSoup, then standardizes the messy free-text program and university fields using a locally hosted TinyLlama model. The output is a structured JSON dataset of 30,000 applicant entries that every later module builds on.",
+      "github_url": "https://github.com/rgogerty16/jhu_software_concepts/tree/main/module_2",
+      "learned": "Checking robots.txt and holding a two second delay per page taught me that the real constraints on scraping are etiquette and rate limits rather than parsing, and that a small local model can clean text no regular expression could.",
+      "tech": ["Selenium", "BeautifulSoup", "llama-cpp-python"],
+      "highlight": "30,000 entries scraped and standardized by a self-hosted model, no external API"
+    },
+    {
+      "module": 3,
+      "title": "PostgreSQL and SQL Analysis",
+      "overview": "Loads the 30,000-entry dataset into a local PostgreSQL database and answers eleven analytical questions with SQL, presenting the results on a dynamic Flask page with a live data refresh button.",
+      "github_url": "https://github.com/rgogerty16/jhu_software_concepts/tree/main/module_3",
+      "learned": "Running the same query against the raw program field and the cleaned one showed the value of Module 2 in a single number: it returned nothing on the raw text and 28 rows on the standardized field.",
+      "tech": ["PostgreSQL", "psycopg", "Flask"],
+      "highlight": "11 SQL questions; the university query returns 0 rows raw against 28 cleaned"
+    },
+    {
+      "module": 4,
+      "title": "Testing and Documentation",
+      "overview": "Adds a complete pytest suite at 100% branch coverage plus Sphinx developer documentation to the Grad Cafe Flask application, with GitHub Actions running the suite against a PostgreSQL service on every push.",
+      "github_url": "https://github.com/rgogerty16/jhu_software_concepts/tree/main/module_4",
+      "learned": "Getting to 100% coverage forced me to refactor toward an application factory and injected dependencies, so the tests ended up changing the design rather than just checking it.",
+      "tech": ["pytest", "Sphinx", "GitHub Actions"],
+      "highlight": "41 tests over 175 statements at 100% coverage, docs published to Read the Docs"
+    },
+    {
+      "module": 5,
+      "title": "Software Assurance and Secure SQL",
+      "overview": "Hardens the application behind a Pylint 10.00/10 gate, rewrites every query using psycopg's sql.SQL composition instead of string building, and adds a least-privilege database user, a dependency graph, and Snyk supply-chain scanning.",
+      "github_url": "https://github.com/rgogerty16/jhu_software_concepts/tree/main/module_5",
+      "learned": "Composing SQL with sql.Identifier and sql.Literal makes injection structurally impossible instead of merely unlikely, which is a better kind of safety than remembering to escape every input.",
+      "tech": ["Pylint", "psycopg sql", "Snyk"],
+      "highlight": "10.00/10 with no messages silenced, alongside 100% test coverage"
+    },
+    {
+      "module": 6,
+      "title": "Dockerized Microservices",
+      "overview": "Refactors the single Flask application into a four-service stack that runs anywhere through Docker Compose: web, worker, PostgreSQL, and RabbitMQ. Button clicks publish a task to the broker and a background worker consumes it, so no request ever waits on a scrape.",
+      "github_url": "https://github.com/rgogerty16/jhu_software_concepts/tree/main/module_6",
+      "learned": "Putting a message broker between the web app and the work meant a button could return immediately, and it was the first time I designed for failure by making ingestion idempotent and watermarked so a repeated task could not double-insert.",
+      "tech": ["Docker Compose", "RabbitMQ", "pika"],
+      "highlight": "4 services published to Docker Hub, running as a non-root user"
+    },
+    {
+      "module": 7,
+      "title": "AWS Cloud Deployment",
+      "overview": "Two cloud deliverables: pulling the dataset from a private S3 bucket into a SageMaker notebook with boto3, and deploying the Module 6 Compose stack onto an EC2 instance behind a locked-down security group.",
+      "github_url": "https://github.com/rgogerty16/jhu_software_concepts/tree/main/module_7",
+      "learned": "Relying on an IAM execution role rather than access keys meant no credential ever had to enter the repository, and narrowing the security group to a single IP made me think about exposure instead of just getting the port open.",
+      "tech": ["boto3", "S3", "SageMaker", "EC2"],
+      "highlight": "Arm t4g.micro instance with only ports 22 and 8080 open, to one IP"
+    },
+    {
+      "module": 8,
+      "title": "Data Preparation and Statistics",
+      "overview": "Extends the cloud pipeline into a full cleaning and exploratory analysis workflow on SageMaker: loads the raw dataset from S3, validates and feature-engineers it with Pandas and NumPy, runs SciPy statistics, produces Matplotlib figures, and writes the cleaned dataset back to S3.",
+      "github_url": "https://github.com/rgogerty16/jhu_software_concepts/tree/main/module_8",
+      "learned": "The missingness table was the most useful thing I produced: GRE scores were absent from over 92% of rows, which reframed every later modelling decision as a question about what applicants choose to report.",
+      "tech": ["Pandas", "NumPy", "SciPy", "S3"],
+      "highlight": "29,141 clean records from 30,000, with GRE missing in 92% of rows"
+    },
+    {
+      "module": 9,
+      "title": "K-Means Clustering of Program Names",
+      "overview": "Groups inconsistently entered program names into a smaller set of program areas using TF-IDF, PCA, and K-Means, so that variants such as Business and Economics and Business Economics fall into the same cluster.",
+      "github_url": "https://github.com/rgogerty16/jhu_software_concepts/tree/main/module_9",
+      "learned": "Picking k from an elbow plot showed me that an unsupervised result is a judgement call rather than an answer, because nothing in the data tells you the right number of clusters.",
+      "tech": ["scikit-learn", "TF-IDF", "PCA"],
+      "highlight": "2,909 distinct program names reduced to 85 clusters"
+    },
+    {
+      "module": 10,
+      "title": "Interactive Data Dashboard",
+      "overview": "An interactive Dash and Plotly dashboard asking whether LeBron James or Michael Jordan is the greater player, split into scoring peak, all-around production, and longevity, with Seaborn figures built from committed CSV snapshots so it runs with no network calls.",
+      "github_url": "https://github.com/rgogerty16/jhu_software_concepts/tree/main/module_10",
+      "learned": "Turning one vague question into three answerable sub-questions did more for the analysis than any choice of chart type, and committing the data snapshots meant the dashboard still runs offline months later.",
+      "tech": ["Dash", "Plotly", "Seaborn"],
+      "highlight": "43,440 points over 23 seasons against 32,292 over 15"
+    },
+    {
+      "module": 11,
+      "title": "MLOps Experiment Tracking",
+      "overview": "Wraps the Module 9 clustering pipeline in experiment tracking, logging the clustering parameters, the inertia metric, and the trained model itself to MLflow, with a flag that switches the backend to Weights and Biases.",
+      "github_url": "https://github.com/rgogerty16/jhu_software_concepts/tree/main/module_11",
+      "learned": "Logging a run and registering the model is the difference between a script I happened to run once and an experiment I can compare against later, which is what turns a result into evidence.",
+      "tech": ["MLflow", "Weights and Biases", "scikit-learn"],
+      "highlight": "Inertia 7529.44 logged, model registered as Clustering version 1"
+    },
+    {
+      "module": 12,
+      "title": "Neural Network Built from Scratch",
+      "overview": "A fully connected 6 to 6 to 1 neural network implemented in NumPy alone, predicting whether an applicant was accepted or rejected. The forward pass, backpropagation, loss function, and training loop are all hand written, with scikit-learn used only to split the data.",
+      "github_url": "https://github.com/rgogerty16/jhu_software_concepts/tree/main/module_12",
+      "learned": "Deriving backpropagation by hand made the chain rule concrete in a way no framework call would have, and the honest finding was that most of the accuracy came from one feature: whether the applicant applied for a Masters or a PhD.",
+      "tech": ["NumPy"],
+      "highlight": "0.7043 test accuracy from 49 parameters, against a 0.5697 baseline"
+    },
+    {
+      "module": 13,
+      "title": "Fine-Tuning DistilBERT and Deploying It",
+      "overview": "Fine-tunes a pretrained DistilBERT model on the full applicant record, free text and structured fields together, then serves it from a Will You Get In? page on the Flask site so a visitor can enter a profile and receive a prediction with a confidence score.",
+      "github_url": "https://github.com/rgogerty16/jhu_software_concepts/tree/main/module_13",
+      "learned": "Auditing the comments field revealed that 64% of them describe the outcome rather than the applicant, so the honest accuracy is 0.7617 rather than the 0.8111 the test set reported, and that gap taught me a held-out split cannot detect a feature that quietly encodes the answer.",
+      "tech": ["PyTorch", "Transformers", "Flask"],
+      "highlight": "0.8111 test accuracy, and 0.7617 once outcome leakage is removed"
+    }
+  ]
+}

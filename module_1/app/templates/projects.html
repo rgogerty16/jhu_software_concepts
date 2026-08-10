@@ -7,24 +7,57 @@
 <section class="projects-section">
     <h1>Projects</h1>
 
-    <!-- Each project gets its own card; add more project-card divs for future modules -->
-    <div class="project-card">
-        <h2>Module 1: Personal Flask Website</h2>
-        <p>
-            A personal website built using Flask, a lightweight Python web framework. The site features
-            a homepage with a biography and photo, a contact page with professional links, and a projects
-            page showcasing coursework. The application is structured using Flask Blueprints for modular
-            page routing, Jinja2 HTML templates for dynamic rendering, and custom CSS for layout and styling.
-        </p>
-        <p>
-            This project demonstrates core web development skills including server-side routing, template
-            inheritance, static file management, and responsive CSS layout — all within a clean, reproducible
-            Python environment.
-        </p>
-        <!-- &rarr; renders as → | target="_blank" opens in a new tab -->
-        <a class="project-link" href="https://github.com/rgogerty16/jhu_software_concepts" target="_blank">
-            View on GitHub &rarr;
-        </a>
+    {#
+        Nothing on this page is hard-coded. The intro and every project block come
+        from app/data/projects.json, loaded by load_portfolio() in
+        app/projects/routes.py. Adding a project means adding one JSON object.
+    #}
+    {% if intro %}
+    <p class="portfolio-intro">{{ intro }}</p>
+    {% endif %}
+
+    {% if error %}
+    <div class="project-empty">
+        <h2>Projects are temporarily unavailable</h2>
+        <p>{{ error }}</p>
     </div>
+    {% elif not projects %}
+    <div class="project-empty">
+        <h2>No projects to show yet</h2>
+        <p>The project data file loaded but contained no entries.</p>
+    </div>
+    {% else %}
+
+    <p class="project-count">{{ projects | length }} projects, Module 1 through Module {{ projects[-1].module }}.</p>
+
+    {% for project in projects %}
+    <article class="project-card">
+        <h2>Module {{ project.module }}: {{ project.title }}</h2>
+
+        {% if project.tech %}
+        <div class="project-meta">
+            {% for item in project.tech %}<span class="tech-tag">{{ item }}</span>{% endfor %}
+        </div>
+        {% endif %}
+
+        <p>{{ project.overview }}</p>
+
+        {% if project.highlight %}
+        <p class="project-highlight">{{ project.highlight }}</p>
+        {% endif %}
+
+        {% if project.learned %}
+        <p class="project-learned"><span class="learned-label">What I learned</span>{{ project.learned }}</p>
+        {% endif %}
+
+        <!-- target="_blank" opens in a new tab; rel="noopener" stops the new page
+             from getting a reference back to this one -->
+        <a class="project-link" href="{{ project.github_url }}" target="_blank" rel="noopener">
+            View Module {{ project.module }} on GitHub &rarr;
+        </a>
+    </article>
+    {% endfor %}
+
+    {% endif %}
 </section>
 {% endblock %}
