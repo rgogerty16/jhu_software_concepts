@@ -52,6 +52,8 @@ Then open <http://localhost:8080/projects>. Screenshots of the finished page are
 
 ## Repository organization
 
+Everything here targets **Python 3.10 or newer**; the committed runs used 3.12.13.
+
 One directory per module. Each has its own `README.md` and `requirements.txt` so it
 can be run on its own; the root `requirements.txt` is the union of all of them, for
 an environment able to run anything here.
@@ -90,11 +92,17 @@ pass. Every entry below is a functional defect and a fix, not a rewording.
 If grader comments do exist that this log does not cover, they should be raised
 with the grader and instructor, as the assignment instructs.
 
+On the format: the assignment's template expects a **Grader Comment** line for each
+entry. Because no comment was recorded for these modules, each entry instead opens
+with the **Finding** the audit produced, which is the same slot filled honestly.
+**Revision Made** and the closing sentence on why it mattered follow the template
+as written.
+
 ### Module 9, K-Means Clustering
 **Finding:** the entire module was missing from `main`. Its work had been committed
 only to the remote branch `claude/module-9-kmeans-setup-8ffa8l` and never merged,
 so `git clone` produced a repository with no Module 9 in it.
-**Change:** verified the working copy was byte-identical to every file on that
+**Revision Made:** verified the working copy was byte-identical to every file on that
 branch, then merged the branch so the original commit and its authorship survive
 rather than re-adding the files as new.
 **Why it matters:** this was the most consequential defect found. The portfolio
@@ -107,7 +115,7 @@ links to one GitHub folder per module, and the Module 9 link would have returned
 `module_6/make_report_pdf.py` all import `fpdf`, and none of those four modules
 listed `fpdf2` in its requirements. Modules 12 and 13 did declare it, which is
 what made the omission visible.
-**Change:** added `fpdf2>=2.7` to each module's requirements, and verified the fix
+**Revision Made:** added `fpdf2>=2.7` to each module's requirements, and verified the fix
 by rebuilding `module_5_report.pdf` with fpdf2 2.8.7 before restoring the
 committed PDF so the graded artifact stayed untouched.
 **Why it matters:** anyone installing from requirements and running the script got
@@ -121,7 +129,7 @@ though the code was correct.
 module as a whole. Its pytest and pylint gates depended on `pytest`,
 `pytest-cov`, and `pylint` being installed ad hoc by
 `.github/workflows/module_6.yml`.
-**Change:** added `module_6/requirements.txt` combining the two service files with
+**Revision Made:** added `module_6/requirements.txt` combining the two service files with
 the test and lint versions the CI pins, plus `fpdf2`. The per-service files are
 unchanged, because the Dockerfiles install from them.
 **Why it matters:** the documented way to work on the module locally did not
@@ -132,7 +140,7 @@ reproducible only inside CI.
 **Finding:** `module_7/.env.example` set `S3_BUCKET=grad-cafe`, while both
 `module_7/s3_fetch.py` and `module_8/s3_fetch.py` default to `grad-cafe-rg` and
 `module_8/.env.example` already used `grad-cafe-rg`.
-**Change:** aligned the example on `grad-cafe-rg` and noted in the file that it
+**Revision Made:** aligned the example on `grad-cafe-rg` and noted in the file that it
 must match `DEFAULT_BUCKET`.
 **Why it matters:** the README tells the reader to copy `.env.example` to `.env`.
 Following that instruction pointed the pipeline at a bucket that does not exist and
@@ -143,7 +151,7 @@ failed with `NoSuchBucket`.
 test suite, and a PostgreSQL service container to run it against, started on every
 push to `main`, including commits that touched no Python at all. Modules 5 and 6
 already filtered on their own directories.
-**Change:** added a `paths` filter for `module_4/**` and the workflow file itself.
+**Revision Made:** added a `paths` filter for `module_4/**` and the workflow file itself.
 **Why it matters:** a red or noisy check on commits unrelated to Module 4 makes CI
 signal meaningless, and it burned runner minutes on work it was not testing.
 
@@ -152,7 +160,7 @@ signal meaningless, and it burned runner minutes on work it was not testing.
 `console_output.png` and `webpage.png` screenshots existed on disk but were
 untracked. Module 3 tracks exactly those four kinds of file, so Module 4 was
 silently inconsistent with the module beside it.
-**Change:** committed all four, plus `module_2/scrape_log.txt`, which was scraper
+**Revision Made:** committed all four, plus `module_2/scrape_log.txt`, which was scraper
 run evidence in the same situation.
 **Why it matters:** source code and assignment evidence that only exists on one
 laptop is not submitted work.
@@ -160,7 +168,7 @@ laptop is not submitted work.
 ### Module 1, hard-coded project content
 **Finding:** the Projects page held a single hard-coded project card and its view
 function was a bare `render_template` with no data.
-**Change:** rebuilt it as described in the portfolio section above, and renamed
+**Revision Made:** rebuilt it as described in the portfolio section above, and renamed
 `README.txt` to `README.md`, the only module that was not already markdown.
 **Why it matters:** beyond the final's requirement for JSON-driven rendering,
 thirteen hard-coded cards would have meant thirteen edits to markup and no single
@@ -172,7 +180,7 @@ archives, a Finder duplicate directory named `module_4 2`, and an IAM credential
 CSV that was untracked but not ignored, one `git add .` away from being committed
 and inside the scope of any whole-repository zip. A `module_14_FinalExam` directory
 held nothing but a 1.1 GB virtualenv.
-**Change:** moved the archives, the duplicate, and the credentials file out of the
+**Revision Made:** moved the archives, the duplicate, and the credentials file out of the
 repository, deleted the empty final-exam directory and six merged branches, and
 extended `.gitignore` with `*.zip`, a root-scoped `/*credentials*` rule, and the
 Module 11 local tracking state. The credentials rule is deliberately narrow: a
